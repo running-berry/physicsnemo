@@ -65,8 +65,6 @@ class HrrrEra5Dataset(StormCastDataset):
 
         dist = DistributedManager()
         self.logger0 = RankZeroLoggingWrapper(logger, dist)
-        print(f"HHSearching:{self.location}")   #$check
-        print("Current directory:", os.getcwd())    #$check
 
         dask.config.set(
             scheduler="synchronous"
