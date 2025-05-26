@@ -8,6 +8,7 @@ make run
 ```
 It will run 
   make pull-> 
+  make log_dir->
   make clear_data-> 
   make make_data-> 
   make train 
@@ -16,14 +17,16 @@ subsequently.
 ## Otherwise:
 If you don't have data yet
 ```bash
-make data
+make make_data
+make log_dir
 make train
 ```
 
 If you have one
 ```bash
 make clear_data
-make data
+make make_data
+make log_dir
 make train
 ```
 
