@@ -14,22 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Defaults
-defaults:
+name: data_loader_small.DummyDataset # Dataset class module and name, in any module in `datasets` folder
 
-  # Dataset
-  - dataset/small
+# Main dataset
+location: '../../../dev/data' # Path to the dataset
 
-  # Model
-  - model/stormcast
+# Domain
+DummyHighRes_img_size: [32, 32] 
 
-  # Training
-  - training/small
+# Temporal selection
+dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
+train_years: [2025] # Years to use for training
+valid_years: [2025] # Years to use for validation
 
-  # Sampler
-  - sampler/edm_deterministic
-
-  # Hydra
-  - hydra/default
-
-  - _self_
+# Variable selection
+invariants: ["c"] # Invariant quantitites to include
+input_channels: 'all' #'all' or list of channels to condition on
+diffusion_channels: "all" #'all' or list of channels to condition on
+kept_DummyLowRes_channels: "all"
+kept_DummyHighRes_channels: "all"

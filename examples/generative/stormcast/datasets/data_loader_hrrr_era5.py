@@ -23,7 +23,6 @@ from physicsnemo.distributed import DistributedManager
 from datetime import datetime, timedelta
 import dask
 import xarray as xr
-import re
 
 from .dataset import StormCastDataset
 
@@ -275,55 +274,55 @@ class HrrrEra5Dataset(StormCastDataset):
     def compute_total_samples(self):
         """
         Loop through all years and count the total number of samples
-        Compute valid sample times by scanning actual ERA5 input files, regardless of variable prefix.
         """
-        era5_dir = os.path.join(self.location, "era5", "train")
-        file_pattern = os.path.join(era5_dir, "*_????????_??.nc")
-        nc_files = sorted(glob.glob(file_pattern))
 
-        if not nc_files:
-            raise FileNotFoundError(f"No ERA5 files found at {file_pattern}")
-
-        # Extract datetime from filenames
-        all_datetimes = []
-        for f in nc_files:
-            match = re.search(r"_(\d{8})_(\d{2})\.nc$", os.path.basename(f))
-            if match:
-                date_str, hour_str = match.groups()
-                dt = datetime.strptime(date_str + hour_str, "%Y%m%d%H")
-                all_datetimes.append(dt)
-
-        all_datetimes = sorted(set(all_datetimes))  # Remove duplicates
-        if not all_datetimes:
-            raise ValueError("No valid timestamps extracted from ERA5 filenames.")
-
-        # Load missing sample info if available
-        missing_samples_path = os.path.join(
-            self.location, f"missing_samples_{self.params.conus_dataset_name}.npy"
-        )
-        if os.path.exists(missing_samples_path):
-            missing_samples = set(np.load(missing_samples_path, allow_pickle=True))
+        first_year = sorted(self.years)[0]
+        last_year = sorted(self.years)[-1]
+        if first_year == 2018:
+            first_sample = datetime(
+                year=first_year, month=8, day=1, hour=1, minute=0, second=0
+            )  # marks transition of hrrr model version
+            self.logger0.info("First sample is {}".format(first_sample))
         else:
-            print(f"Warning: {missing_samples_path} not found. Using an empty set.")
-            missing_samples = set()
+            first_sample = datetime(
+                year=first_year, month=1, day=1, hour=0, minute=0, second=0
+            )
+            self.logger0.info("First sample is {}".format(first_sample))
 
-        # Only keep timestamps that are present and have their `dt` also available
+        last_sample = datetime(
+            year=last_year, month=12, day=31, hour=23, minute=0, second=0
+        )
+        if last_year == 2022:  # validation dataset. kludge to avoid hitting boundary
+            last_sample = datetime(
+                year=last_year, month=12, day=15, hour=0, minute=0, second=0
+            )
+            self.logger0.info("Last sample is {}".format(last_sample))
+        all_datetimes = [
+            first_sample + timedelta(hours=x)
+            for x in range(int((last_sample - first_sample).total_seconds() / 3600) + 1)
+        ]
+
+        missing_samples = np.load(
+            os.path.join(
+                self.location,
+                "missing_samples_{}.npy".format(self.params.conus_dataset_name),
+            ),
+            allow_pickle=True,
+        )
+
+        missing_samples = set(missing_samples)  # hash for faster lookup
+
         self.valid_samples = [
-            x for x in all_datetimes
-            if (x not in missing_samples) and ((x + timedelta(hours=self.dt)) in all_datetimes)
-         ]
-        self.logger0.info(f"Total valid samples: {len(self.valid_samples)}") # $check
-        self.logger0.info(f"First few samples: {self.valid_samples[:5]}") # $check
-        self.logger0.info(f"Last few samples: {self.valid_samples[-5:]}") #$check
-
-        # $check One-time debug dump
-        with open("valid_samples_debug.txt", "w") as f:
-            for idx, sample in enumerate(self.valid_samples):
-                f.write(f"{idx}: {sample} -> tar: {sample + timedelta(hours=self.dt)}\n")
-        # $check end
+            x
+            for x in all_datetimes
+            if (x not in missing_samples)
+            and (x + timedelta(hours=self.dt) not in missing_samples)
+        ]
 
         self.logger0.info(
-            f"Scanned {len(nc_files)} files -> {len(all_datetimes)} timestamps, {len(self.valid_samples)} valid."
+            "Total datetimes in training set are {} of which {} are valid".format(
+                len(all_datetimes), len(self.valid_samples)
+            )
         )
 
         return len(self.valid_samples)
@@ -405,7 +404,7 @@ class HrrrEra5Dataset(StormCastDataset):
         """
         Parse a global sample index and return the input/target timstamps as datetimes
         """
-        self.logger0.info(f"[__getitem__] global_idx: {global_idx}, inp: {inp}, tar: {tar}") #$check
+
         inp = self.valid_samples[global_idx]
         tar = inp + timedelta(hours=self.dt)
 
