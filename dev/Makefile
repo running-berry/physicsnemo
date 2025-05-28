@@ -23,6 +23,9 @@ clear_data:
 	rm -rf $(data_dir)/DummyHighRes
 	rm -rf $(data_dir)/DummyLowRes	
 
+clear_rundir:
+	rm -rf $(stormcast_dir)/rundir
+
 run:
 	$(MAKE) pull
 	$(MAKE) log_dir

@@ -25,6 +25,7 @@ DummyHighRes_img_size: [32, 32]
 # Temporal selection
 dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
 train_years: [2025] # Years to use for training
+train_dates: ['2025/05/01', '2025/05/15']
 valid_years: [2025] # Years to use for validation
 
 # Variable selection

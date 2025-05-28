@@ -4,6 +4,8 @@ import numpy as np
 
 num_channel = 5
 domain_size = (32, 32)
+test_datetime_start = "2025/05/01"
+test_datetime_last = "2025/05/15"
 test_years = [2025]
 
 for fname in ["DummyHighRes", "DummyLowRes"]:
@@ -23,10 +25,11 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
     lon_grid, lat_grid = np.meshgrid(lon, lat)
 
     for year in test_years:
-        base_date = np.datetime64(f'{year}-01-01T00:00:00')
-        offsets = np.arange(365*24).astype(np.int64)
+        base_date = np.datetime64(test_datetime_start.replace('/', '-') + 'T00:00:00')
+        end_date = np.datetime64(test_datetime_last.replace('/', '-')) + np.timedelta64(23, 'h')
+        total_hours = int((end_date - base_date) / np.timedelta64(1, 'h')) + 1
+        offsets = np.arange(total_hours, dtype=np.int64)
         datetime_array = base_date + offsets * np.timedelta64(1, 'h')
-
         chunk_sizes = {
             'time': 1,
             'channel': num_channel,
@@ -36,7 +39,7 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
 
         lon_grid, lat_grid = np.meshgrid(lon, lat)
 
-        data_shape = (365*24, num_channel)+domain_size
+        data_shape = (total_hours, num_channel)+domain_size
         year_data = xr.Dataset({
             f'{fname}': (['time', 'channel', 'y', 'x'], np.random.rand(*data_shape).astype(np.float32)),
             'time': datetime_array,
