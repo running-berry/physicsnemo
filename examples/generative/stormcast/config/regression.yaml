@@ -18,13 +18,13 @@
 defaults:
 
   # Dataset
-  - dataset/hrrr_era5
+  - dataset/small
 
   # Model
   - model/stormcast
 
   # Training
-  - training/default
+  - training/small
 
   # Sampler
   - sampler/edm_deterministic
