@@ -224,15 +224,20 @@ class DummyDataset(StormCastDataset):
         
         first_year = sorted(self.years)[0]
         last_year = sorted(self.years)[-1]
+        
+        test_datetime_start = self.params.train_dates[0]
+        test_datetime_last = self.params.train_dates[1]
 
-        first_sample = datetime(
-            year=first_year, month=1, day=1, hour=0, minute=0, second=0
-        )
+        first_sample = datetime.strptime(
+            test_datetime_start, "%Y/%m/%d") \
+                .replace(hour=0, minute=0, second=0)
+        
         self.logger0.info("First sample is {}".format(first_sample))
 
-        last_sample = datetime(
-            year=last_year, month=12, day=31, hour=23, minute=0, second=0
-        )
+        last_sample = datetime.strptime(
+            test_datetime_last, "%Y/%m/%d") \
+                .replace(hour=23, minute=0, second=0)
+
         self.logger0.info("Last sample is {}".format(last_sample))
         
         all_datetimes = [
