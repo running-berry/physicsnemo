@@ -1,0 +1,3 @@
+earth2studio
+numpy
+xarray
