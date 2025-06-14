@@ -5,13 +5,13 @@ import numpy as np
 
 def load_era5_interp_nc(date_str: str, hr_str: str) -> Dataset:
     dt = datetime.strptime(date_str, "%Y/%m/%d")
-    folder = "./era5/train"
+    folder = "./data/era5/train"
     filepath = dt.strftime(f"{folder}/t2m_%Y%m%d_") + hr_str.zfill(2) + ".nc"
     ds = Dataset(filepath, mode='r')
 
     return ds
 
-def save_t2m_numpy(date_str: str, hr_str: str, out_dir: str = "./cache"):
+def save_t2m_numpy(date_str: str, hr_str: str, out_dir: str = "./cache/era5/"):
     # 1) load dataset
     ds = load_era5_interp_nc(date_str, hr_str)
     print("Variables in the dataset:", ds.variables.keys())
@@ -27,7 +27,7 @@ def save_t2m_numpy(date_str: str, hr_str: str, out_dir: str = "./cache"):
     os.makedirs(out_dir, exist_ok=True)
 
     # 4) save as .npz (multiple arrays in one file)
-    fn = f"./era5/" + date_str.replace("/", "") + f"_{hr_str}.npz"
+    fn = date_str.replace("/", "") + f"_{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
     np.savez(
         out_path,
