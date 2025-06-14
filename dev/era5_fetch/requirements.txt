@@ -1,3 +1,4 @@
 earth2studio
 numpy
 xarray
+cdsapi
