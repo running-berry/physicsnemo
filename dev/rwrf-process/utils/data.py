@@ -4,30 +4,17 @@ def load_data(path, source, variable):
     """
     Load NPZ data for ERA5 or RWRF.
     """
-    data = np.load(path, allow_pickle=True)
-    if source == 'era5':
-        if variable == 't2m':
-            t2m = data['t2m']
-        elif variable == 'u10':
-            u10 = data['u10']
-        lat = data['lat']
-        lon = data['lon']
-        times = data['times']
-    elif source == 'rwrf':
-        if variable == 't2m':
-            t2m = data['t2m']
-        elif variable == 'u10':
-            u10 = data['u10']
-        lat = data['lat']
-        lon = data['lon']
-        times = data['times']
-    else:
+    if source not in ['era5', 'rwrf']:
         raise ValueError(f"Unknown source: {source}")
-
-    if variable == 't2m':
-        return t2m, lat, lon, times
-    elif variable == 'u10':
-        return u10, lat, lon, times
+    if variable not in ['t2m', 'u10']:
+        raise ValueError(f"Unknown variable: {variable}")
+    
+    data = np.load(path, allow_pickle=True)
+    var_data = data[variable]
+    lat = data['lat']
+    lon = data['lon']
+    times = data['times']
+    return var_data, lat, lon, times
 
 
 def decode_time(raw, source, variable):
@@ -57,25 +44,16 @@ def extract_slice(var_data, lat, lon, source, variable):
     """
     if source == 'era5':
         if variable == 't2m':
-            # convert K to C
-            t2m_0 = var_data[0, 0, :, :]
-            t2m_c = t2m_0 - 273.15
+            data_slice = var_data[0, 0, :, :] - 273.15  # K to C
         elif variable == 'u10':
-            u10_0 = var_data[0, :, :]
+            data_slice = var_data[0, :, :]
         lat_grid = lat
         lon_grid = lon
     else:  # rwrf
+        data_slice = var_data[0, :, :]
         if variable == 't2m':
-            # convert K to C
-            t2m_0 = var_data[0, :, :]
-            t2m_c = t2m_0 - 273.15
-        elif variable == 'u10':
-            u10_0 = var_data[0, :, :]
+            data_slice = data_slice - 273.15  # K to C
         lat_grid = lat[0, :, :]
         lon_grid = lon[0, :, :]
-        
-    if variable == 't2m':
-        return t2m_c, lat_grid, lon_grid
-    elif variable == 'u10':
-        return u10_0, lat_grid, lon_grid
+    return data_slice, lat_grid, lon_grid
 
