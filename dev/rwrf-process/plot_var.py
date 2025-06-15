@@ -3,32 +3,29 @@ import matplotlib.pyplot as plt
 import argparse
 
 
-def plot_t2m(lon, lat, t2m_c, time_str, source, levels=20, figsize=(8,6)):
+def plot_var(lon, lat, field, time_str, source, variable, levels=20, figsize=(8, 6)):
     """
-    Create a filled contour plot of 2m temperature.
+    Create a filled contour plot for a field (t2m or u10).
     """
     plt.figure(figsize=figsize)
-    cs = plt.contourf(lon, lat, t2m_c, levels=levels, cmap='coolwarm')
-    plt.colorbar(cs, label='T2 (°C)')
-    plt.title(f"2 m Temp at {time_str}")
-    plt.xlabel('Longitude')
-    plt.ylabel('Latitude')
-    plt.tight_layout()
-    plt.savefig(f't2m_{source}_{time_str}.png')
-    plt.show()
+    if variable == 't2m':
+        cmap = 'coolwarm'
+        label = 'T2 (°C)'
+        title = f"2 m Temp at {time_str}"
+        img_path = f't2m_{source}_{time_str}.png'
+    elif variable == 'u10':
+        cmap = plt.cm.jet
+        label = 'u10 (m/s)'
+        title = f"10m u-component of wind at {time_str}"
+        img_path = f'u10_{source}_{time_str}.png'
     
-def plot_u10(lon, lat, u10_0, time_str, source, levels=20, figsize=(8,6)):
-    """
-    Create a filled contour plot of 10m u-component of wind.
-    """
-    plt.figure(figsize=figsize)
-    cs = plt.contourf(lon, lat, u10_0, levels=levels, cmap=plt.cm.jet)
-    plt.colorbar(cs, label='u10 (m/s)')
-    plt.title(f"10m u-component of wind at {time_str}")
+    cs = plt.contourf(lon, lat, field, levels=levels, cmap=cmap)
+    plt.colorbar(cs, label=label)
+    plt.title(title)
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
     plt.tight_layout()
-    plt.savefig(f'u10_{source}_{time_str}.png')
+    plt.savefig(img_path)
     plt.show()
 
 
@@ -46,10 +43,7 @@ def main():
     time_str = decode_time(raw, args.source, args.variable)
     extracted_data, lat_grid, lon_grid = extract_slice(data, lat, lon, args.source, args.variable)
     
-    if args.variable == 't2m':
-        plot_t2m(lon_grid, lat_grid, extracted_data, time_str, args.source)
-    elif args.variable == 'u10':
-        plot_u10(lon_grid, lat_grid, extracted_data, time_str, args.source)
+    plot_var(lon_grid, lat_grid, extracted_data, time_str, args.source, args.variable)
 
 
 if __name__ == '__main__':

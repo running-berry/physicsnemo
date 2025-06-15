@@ -8,92 +8,52 @@ def find_common_boundaries(era5_lat, era5_lon, rwrf_lat, rwrf_lon):
     """
     Find common lat/lon boundaries for both datasets.
     """
-    # For ERA5
-    era5_lat_min, era5_lat_max = np.min(era5_lat), np.max(era5_lat)
-    era5_lon_min, era5_lon_max = np.min(era5_lon), np.max(era5_lon)
 
-    # For RWRF
-    rwrf_lat_min, rwrf_lat_max = np.min(rwrf_lat), np.max(rwrf_lat)
-    rwrf_lon_min, rwrf_lon_max = np.min(rwrf_lon), np.max(rwrf_lon)
-
-    lat_min = max(era5_lat_min, rwrf_lat_min)
-    lat_max = min(era5_lat_max, rwrf_lat_max)
-    lon_min = max(era5_lon_min, rwrf_lon_min)
-    lon_max = min(era5_lon_max, rwrf_lon_max)
+    lat_min = max(np.min(era5_lat), np.min(rwrf_lat))
+    lat_max = min(np.max(era5_lat), np.max(rwrf_lat))
+    lon_min = max(np.min(era5_lon), np.min(rwrf_lon))
+    lon_max = min(np.max(era5_lon), np.max(rwrf_lon))
 
     return lat_min, lat_max, lon_min, lon_max
 
 
-def plot_u10(
+def plot_field(
     lon,
     lat,
-    u10,
+    data,
     time_str,
-    levels=20,
-    source="era5",
-    boundaries=None,
-    subplot=None,
+    variable,
+    source,
+    boundaries,
+    ax,
+    levels=20
 ):
     """
-    Create a contour plot of 10m u-component of wind with boundaries.
+    Create a countour plot for u10 or t2m within specified boundaries.
     """
-    ax = subplot
-
     lat_min, lat_max, lon_min, lon_max = boundaries
 
     if source == "era5":
         lat_mask = (lat >= lat_min) & (lat <= lat_max)
         lon_mask = (lon >= lon_min) & (lon <= lon_max)
-        u10_filtered = u10[lat_mask, :][:, lon_mask]
+        data_filtered = data[lat_mask, :][:, lon_mask]
         lat_filtered = lat[lat_mask]
         lon_filtered = lon[lon_mask]
-    elif source == "rwrf":
-        u10_filtered = u10
+    else:
+        data_filtered = data
         lat_filtered = lat
         lon_filtered = lon
 
-    cs = ax.contourf(
-        lon_filtered, lat_filtered, u10_filtered, levels=levels, cmap=plt.cm.jet
-    )
-    plt.colorbar(cs, ax=ax, label="u10 (m/s)")
-    ax.set_title(f"{source.upper()} 10m u-component of wind at  {time_str}")
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
+    cmap = "coolwarm" if variable == "t2m" else plt.cm.jet
+    label = "T2 (°C)" if variable == "t2m" else "u10 (m/s)"
+    if variable == "t2m":
+        title = f"{source.upper()} 2m Temp at {time_str}"
+    elif variable == "u10":
+        title = f"{source.upper()} 10m u-component of wind at {time_str}"
 
-
-def plot_t2m(
-    lon,
-    lat,
-    t2m_c,
-    time_str,
-    levels=20,
-    source="era5",
-    boundaries=None,
-    subplot=None,
-):
-    """
-    Create a contour plot of 2m temperature with boundaries.
-    """
-    ax = subplot
-
-    lat_min, lat_max, lon_min, lon_max = boundaries
-
-    if source == "era5":
-        lat_mask = (lat >= lat_min) & (lat <= lat_max)
-        lon_mask = (lon >= lon_min) & (lon <= lon_max)
-        t2m_filtered = t2m_c[lat_mask, :][:, lon_mask]
-        lat_filtered = lat[lat_mask]
-        lon_filtered = lon[lon_mask]
-    elif source == "rwrf":
-        t2m_filtered = t2m_c
-        lat_filtered = lat
-        lon_filtered = lon
-
-    cs = ax.contourf(
-        lon_filtered, lat_filtered, t2m_filtered, levels=levels, cmap="coolwarm"
-    )
-    plt.colorbar(cs, ax=ax, label="T2 (°C)")
-    ax.set_title(f"{source.upper()} 2m Temp at {time_str}")
+    cs = ax.contourf(lon_filtered, lat_filtered, data_filtered, levels=levels, cmap=cmap)
+    plt.colorbar(cs, ax=ax, label=label)
+    ax.set_title(title)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
 
@@ -123,57 +83,24 @@ def main():
     )
 
     # Find common boundaries
-    lat_min, lat_max, lon_min, lon_max = find_common_boundaries(
+    boundaries = find_common_boundaries(
         era5_lat_grid, era5_lon_grid, rwrf_lat_grid, rwrf_lon_grid
     )
-    common_boundaries = (lat_min, lat_max, lon_min, lon_max)
+
 
     # Create side-by-side comparison
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-    if args.variable == 't2m':
-        plot_t2m(
-            era5_lon_grid,
-            era5_lat_grid,
-            era5_extracted_data,
-            era5_time_str,
-            source="era5",
-            boundaries=common_boundaries,
-            subplot=ax1,
-        )
-        plot_t2m(
-            rwrf_lon_grid,
-            rwrf_lat_grid,
-            rwrf_extracted_data,
-            rwrf_time_str,
-            source="rwrf",
-            boundaries=common_boundaries,
-            subplot=ax2,
-        )
-        plt.tight_layout()
-        plt.savefig("comparison_t2m.png")
-        plt.show()
-    elif args.variable == 'u10':
-        plot_u10(
-            era5_lon_grid,
-            era5_lat_grid,
-            era5_extracted_data,
-            era5_time_str,
-            source="era5",
-            boundaries=common_boundaries,
-            subplot=ax1,
-        )
-        plot_u10(
-            rwrf_lon_grid,
-            rwrf_lat_grid,
-            rwrf_extracted_data,
-            rwrf_time_str,
-            source="rwrf",
-            boundaries=common_boundaries,
-            subplot=ax2,
-        )
-        plt.tight_layout()
-        plt.savefig("comparison_u10.png")
-        plt.show()
+    plot_field(
+        era5_lon_grid, era5_lat_grid, era5_extracted_data, era5_time_str,
+        variable=args.variable, source="era5", boundaries=boundaries, ax=ax1
+    )
+    plot_field(
+        rwrf_lon_grid, rwrf_lat_grid, rwrf_extracted_data, rwrf_time_str,
+        variable=args.variable, source="rwrf", boundaries=boundaries, ax=ax2
+    )
+    plt.tight_layout()
+    plt.savefig(f"align_{args.variable}.png")
+    plt.show()
 
 
 if __name__ == "__main__":
