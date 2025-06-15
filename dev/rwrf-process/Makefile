@@ -33,6 +33,13 @@ align-plot-u10:
 	python align.py --era5_path ./cache/era5/u10_20200601_00.npz --rwrf_path ./cache/rwrf/u10_20190803_00.npz  --variable u10
 align-plot: align-plot-t2m align-plot-u10
 
+interpolate-plot-t2m:
+	python interpolate.py --era5_path ./cache/era5/t2m_20200601_00.npz --rwrf_path ./cache/rwrf/t2m_20190803_00.npz  --variable t2m
+
+interpolate-plot-u10:
+	python interpolate.py --era5_path ./cache/era5/u10_20200601_00.npz --rwrf_path ./cache/rwrf/u10_20190803_00.npz  --variable u10
+interpolate-plot: interpolate-plot-t2m interpolate-plot-u10
+
 plot: plot_era5
 
 env-metview:
