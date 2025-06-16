@@ -1,3 +1,4 @@
+from utils.config import CONFIG
 from netCDF4 import Dataset
 from datetime import datetime
 import os
@@ -6,8 +7,7 @@ import argparse
 
 def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
     dt = datetime.strptime(date_str, "%Y/%m/%d")
-    # folder = "./data/era5/train"
-    folder = "../data/era5/train"
+    folder = CONFIG.era5
     if variable == "t2m":
         filepath = dt.strftime(f"{folder}/t2m_%Y%m%d_") + hr_str.zfill(2) + ".nc"
     elif variable == "u10":
@@ -29,12 +29,12 @@ def save_t2m_numpy(date_str: str, hr_str: str, variable: str, out_dir: str = "./
         lat = ds.variables["lat"][:]    # often shape (time, y, x)
         lon = ds.variables["lon"][:]
         times = ds.variables["time"][:]  # WRF Times: char array
-        t2m = ds.variables['__xarray_dataarray_variable__'][:]
+        data = ds.variables['__xarray_dataarray_variable__'][:]
     elif variable == "u10":
         lat = ds.variables["latitude"][:]
         lon = ds.variables["longitude"][:]
         times = ds.variables['valid_time'][:]   # unix format
-        u10 = ds.variables["u10"][:]    # often shape (time, y, x)
+        data = ds.variables["u10"][:]    # often shape (time, y, x)
 
     ds.close()
     # 3) ensure output dir
@@ -43,22 +43,13 @@ def save_t2m_numpy(date_str: str, hr_str: str, variable: str, out_dir: str = "./
     # 4) save as .npz (multiple arrays in one file)
     fn = f"{variable}_" + date_str.replace("/", "") + f"_{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
-    if variable == "t2m":
-        np.savez(
-            out_path,
-            t2m=t2m,
-            lat=lat,
-            lon=lon,
-            times=times
-        )
-    elif variable == "u10":
-        np.savez(
-            out_path,
-            u10=u10,
-            lat=lat,
-            lon=lon,
-            times=times
-        )
+    np.savez(
+        out_path,
+        **{variable: data},
+        lat=lat,
+        lon=lon,
+        times=times
+    )
     print(f"Saved arrays to {out_path}")
     
 def main():
