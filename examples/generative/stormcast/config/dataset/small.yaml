@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2024 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: data_loader_small.DummyDataset # Dataset class module and name, in any module in `datasets` folder
+
+# Main dataset
+location: '../../../dev/data' # Path to the dataset
+
+# Domain
+DummyHighRes_img_size: [32, 32] 
+
+# Temporal selection
+dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
+train_years: [2025] # Years to use for training
+train_dates: ['2025/05/01', '2025/05/15']
+valid_years: [2025] # Years to use for validation
+
+# Variable selection
+invariants: ["c"] # Invariant quantitites to include
+input_channels: 'all' #'all' or list of channels to condition on
+diffusion_channels: "all" #'all' or list of channels to condition on
+kept_DummyLowRes_channels: "all"
+kept_DummyHighRes_channels: "all"
