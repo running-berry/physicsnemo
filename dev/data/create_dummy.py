@@ -2,11 +2,12 @@ import os
 import xarray as xr
 import numpy as np
 
-num_channel = 5
-domain_size = (32, 32)
-test_datetime_start = "2025/05/01"
-test_datetime_last = "2025/05/15"
-test_years = [2025]
+channel_vars = ['t2m']
+num_channel = len(channel_vars)
+domain_size = (16, 16)
+test_datetime_start = "2019/08/03"
+test_datetime_last = "2019/08/03"
+test_years = [2019]
 
 for fname in ["DummyHighRes", "DummyLowRes"]:
     folder_path=f"{fname}/stats"
@@ -32,7 +33,7 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
         datetime_array = base_date + offsets * np.timedelta64(1, 'h')
         chunk_sizes = {
             'time': 1,
-            'channel': num_channel,
+            'channel': channel_vars,
             'latitude': len(lat_grid),
             'longitude': len(lon_grid),
         }
@@ -43,7 +44,7 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
         year_data = xr.Dataset({
             f'{fname}': (['time', 'channel', 'y', 'x'], np.random.rand(*data_shape).astype(np.float32)),
             'time': datetime_array,
-            'channel': ['a', 'b', 'c', 'd', 'e'],
+            'channel': channel_vars,
             'latitude': (["y", "x"], lat_grid),
             'longitude': (["y", "x"], lon_grid)
         })
