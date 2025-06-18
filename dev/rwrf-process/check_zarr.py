@@ -1,8 +1,8 @@
 import xarray as xr
 import numpy as np
 
-base_zarr_data = "./"
-base_zarr_dummy = "./zarr"
+base_zarr_data = "../data"
+base_zarr_dummy = "../data"
 
 highres_data = xr.open_zarr(f"{base_zarr_data}/DummyHighRes/2019.zarr", consolidated=True)
 lowres_data = xr.open_zarr(f"{base_zarr_data}/DummyLowRes/2019.zarr", consolidated=True)
