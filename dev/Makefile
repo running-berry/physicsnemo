@@ -2,7 +2,7 @@
 stormcast_dir := ../examples/generative/stormcast/
 data_dir := ./data
 rwrf_dir := ./rwrf-process
-log_dir := ../../../dev/logs
+log_dir := /workspace/dev/logs
 
 pull:
 	git pull origin fix/data-loader
