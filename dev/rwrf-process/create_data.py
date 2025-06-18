@@ -10,8 +10,8 @@ domain_size = (32, 32)
 test_datetime_start = "2019/08/03"
 test_datetime_last = "2019/08/03"
 test_years = [2019]
-cache_path = "./cache"
-data_path = "./data"
+cache_path = "../cache"
+data_path = "../data"
 
 def create_dummy_arr(
     dt,

@@ -1,6 +1,7 @@
 # Makefile
 stormcast_dir := ../examples/generative/stormcast/
 data_dir := ./data
+rwrf_dir := ./rwrf-process
 log_dir := ../../../dev/logs
 
 pull:
@@ -11,7 +12,7 @@ make_dummy:
 	python create_dummy.py
 
 make_data:
-	cd $(data_dir) && \
+	cd $(rwrf_dir) && \
 	python create_data.py
 
 log_dir:
@@ -26,6 +27,8 @@ train:
 clear_data:
 	rm -rf $(data_dir)/DummyHighRes
 	rm -rf $(data_dir)/DummyLowRes	
+	rm -rf $(data_dir)/HighRes
+	rm -rf $(data_dir)/LowRes	
 
 clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
