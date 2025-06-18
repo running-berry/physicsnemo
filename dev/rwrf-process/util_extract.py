@@ -163,9 +163,9 @@ def extract_region(
     data_sub_ds = data_sub[..., y_idx, :][..., :, x_idx]
 
     return data_sub_ds, lon_grid, lat_grid, times
-  
-if __name__ == "__main__":
-    # example usage
+
+def main():
+        # example usage
     PATH = "./cache/era5/20200601_00.npz"
     VAR = "t2m"
     LON_MIN, LON_MAX = 121.00, 121.75
@@ -194,3 +194,6 @@ if __name__ == "__main__":
     lon = lon_grid
     print("Extracted data shapes:")
     print(t2m.shape, lat.shape, lon.shape, times.shape)
+  
+if __name__ == "__main__":
+    main()

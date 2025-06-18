@@ -10,8 +10,8 @@ domain_size = (32, 32)
 test_datetime_start = "2019/08/03"
 test_datetime_last = "2019/08/03"
 test_years = [2019]
-cache_path = "../cache"
-data_path = "../data"
+cache_base = "./cache"
+data_base = "../data"
 
 def create_dummy_arr(
     dt,
@@ -30,7 +30,7 @@ def create_dummy_arr(
     # build the filename for this dt
     yy, mm, dd, hh = np.datetime_as_string(dt, unit='h')\
                        .replace('T','-').split('-')
-    fn = f"{yy}{mm}{dd}_{hh}.npz"
+    fn = f"{data_var}_{yy}{mm}{dd}_{hh}.npz"
     dt_path = os.path.join(data_path, fn)
 
     # grab one real sample to infer shapes
@@ -54,8 +54,8 @@ def create_dummy_arr(
 
     return dummy_arr, lon_grid, lat_grid, times
     
-for fname in ["DummyHighRes", "DummyLowRes"]:
-    folder_path=f"{fname}/stats"
+for fname in ["HighRes", "LowRes"]:
+    folder_path=f"{data_base}/{fname}/stats"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     else:
@@ -63,10 +63,10 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
 
     # determine data path base
     if fname == "HighRes":
-        data_path = "./cache/rwrf/"
+        cache_path = f"{cache_base}/rwrf/"
         import fetch_rwrf as u2
     elif fname == "LowRes":
-        data_path = "./cache/era5/"
+        cache_path = f"{cache_base}/era5/"
         import fetch_era5 as u2
     
     lon_min, lon_max = 121.00, 121.75
@@ -78,19 +78,21 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
     total_hours = int((end_date - base_date) / np.timedelta64(1, 'h')) + 1
     offsets = np.arange(total_hours, dtype=np.int64)
     datetime_array = base_date + offsets * np.timedelta64(1, 'h')
+    print(cache_path)
     #create the dummy data format by the first data
     dummy_data, dummy_lon_grid, dummy_lat_grid, dummy_times = create_dummy_arr(
         datetime_array[0],
-        data_path, channel_vars[0],
+        cache_path, channel_vars[0],
         lon_min, lon_max,
         lat_min, lat_max,
     )
     missing_data = []
     data_arr = None
+    channel_var = channel_vars[0]
     
     for dt in datetime_array:
         yy, mm, dd, hh = np.datetime_as_string(dt, unit='h').replace('T', '-').split('-')
-        dt_path = os.path.join(data_path, f"{yy}{mm}{dd}_{hh}.npz")
+        dt_path = os.path.join(cache_path, f"{channel_var}_{yy}{mm}{dd}_{hh}.npz")
         print(f"Processing {dt_path}")
 
         try:
@@ -157,8 +159,8 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
     'longitude': (["y", "x"], lon_grid)
     })
     data_enc = {f'{fname}':{'dtype':'float32', 'compressor':None}}
-    year_data.to_zarr(f'{fname}/{year}.zarr', mode='w', consolidated=True, encoding=data_enc, zarr_format=2)
-    zarr.consolidate_metadata(f'{fname}/{year}.zarr')
+    year_data.to_zarr(f'{data_base}/{fname}/{year}.zarr', mode='w', consolidated=True, encoding=data_enc, zarr_format=2)
+    zarr.consolidate_metadata(f'{data_base}/{fname}/{year}.zarr')
 
 
-    print(f"Data for {year} saved to {fname}/{year}.zarr")
+    print(f"Data for {year} saved to {data_base}/{fname}/{year}.zarr")

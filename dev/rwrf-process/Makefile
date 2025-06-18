@@ -1,15 +1,14 @@
 run: clean
 	python create_data.py
 
-run-plot-t2m:
+nc-to-npz-t2m:
 	python fetch_rwrf.py --variable t2m
 	python fetch_era5.py --variable t2m
-	# python plot_var.py
 
-run-plot-u10:
+nc-to-npz-u10:
 	python fetch_rwrf.py --variable u10
 	python fetch_era5.py --variable u10
-nc-to-npz: run-plot-t2m run-plot-u10
+nc-to-npz: nc-to-npz-t2m nc-to-npz-u10
 
 plot-era5-t2m:
 	python plot_var.py ./cache/era5/t2m_20200601_00.npz --source era5 --variable t2m

@@ -33,9 +33,14 @@ clear_data:
 clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
+make_cache:
+	cd $(rwrf_dir) && \
+	$(MAKE) nc-to-npz-t2m
+
 run:
 	$(MAKE) pull
 	$(MAKE) log_dir
+	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
 	$(MAKE) make_data

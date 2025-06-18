@@ -57,7 +57,7 @@ def main():
     parser.add_argument('--variable', choices=['t2m', 'u10'], required=True,
                         help='Variable to extract:')
     args = parser.parse_args()
-    save_t2m_numpy("2020/06/01", "00", args.variable)
+    save_t2m_numpy("2019/08/03", "00", args.variable)
 
 
 if __name__ == "__main__":
