@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: data_loader_small.Dataset # Dataset class module and name, in any module in `datasets` folder
+name: data_loader_small.DummyDataset # Dataset class module and name, in any module in `datasets` folder
 
 # Main dataset
 location: '../../../dev/data' # Path to the dataset
 
 # Domain
-HighRes_img_size: [32, 32] 
+DummyHighRes_img_size: [32, 32] 
 
 # Temporal selection
 dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
@@ -32,5 +32,5 @@ valid_years: [2025] # Years to use for validation
 invariants: ["c"] # Invariant quantitites to include
 input_channels: 'all' #'all' or list of channels to condition on
 diffusion_channels: "all" #'all' or list of channels to condition on
-kept_LowRes_channels: "all"
-kept_HighRes_channels: "all"
+kept_DummyLowRes_channels: "all"
+kept_DummyHighRes_channels: "all"

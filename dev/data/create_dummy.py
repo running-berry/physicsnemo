@@ -2,7 +2,8 @@ import os
 import xarray as xr
 import numpy as np
 
-num_channel = 5
+channel_vars = ['t2m']
+num_channel = len(channel_vars)
 domain_size = (32, 32)
 test_datetime_start = "2025/05/01"
 test_datetime_last = "2025/05/15"
@@ -43,7 +44,7 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
         year_data = xr.Dataset({
             f'{fname}': (['time', 'channel', 'y', 'x'], np.random.rand(*data_shape).astype(np.float32)),
             'time': datetime_array,
-            'channel': ['a', 'b', 'c', 'd', 'e'],
+            'channel': channel_vars,
             'latitude': (["y", "x"], lat_grid),
             'longitude': (["y", "x"], lon_grid)
         })
