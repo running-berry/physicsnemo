@@ -6,9 +6,13 @@ log_dir := ../../../dev/logs
 pull:
 	git pull origin fix/data-loader
 
-make_data:
+make_dummy:
 	cd $(data_dir) && \
 	python create_dummy.py
+
+make_data:
+	cd $(data_dir) && \
+	python create_data.py
 
 log_dir:
 	mkdir -p $(log_dir)
@@ -30,5 +34,6 @@ run:
 	$(MAKE) pull
 	$(MAKE) log_dir
 	$(MAKE) clear_data	
+	$(MAKE) clear_rundir	
 	$(MAKE) make_data
 	$(MAKE) train
