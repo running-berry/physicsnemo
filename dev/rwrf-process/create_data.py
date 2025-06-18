@@ -5,7 +5,7 @@ import util_extract as u1
 
 data_var = "t2m"
 num_channel = len(data_var)
-domain_size = (32, 32)
+domain_size = (16, 16)
 test_datetime_start = "2019/08/03"
 test_datetime_last = "2019/08/03"
 test_years = [2019]
