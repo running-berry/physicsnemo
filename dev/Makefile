@@ -5,7 +5,8 @@ rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
 # variable := t2m
 # variable := u10
-variable := qpepre
+# variable := qpepre
+variable := cropped-qpepre
 
 pull:
 	git pull origin fix/data-loader
