@@ -4,7 +4,8 @@ import numpy as np
 import util_extract as u1
 import zarr
 
-channel_vars = ['t2m']
+# channel_vars = ["t2m"]
+channel_vars = ["qpepre"]
 num_channel = len(channel_vars)
 domain_size = (32, 32)
 test_datetime_start = "2019/08/03"
