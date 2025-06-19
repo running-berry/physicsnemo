@@ -1,6 +1,9 @@
 run: clean
 	python create_data.py
 
+combine-rwrf-qpepre:
+	python combine_rwrf_qpepre.py
+
 nc-to-npz-t2m:
 	python fetch_rwrf.py --variable t2m
 	python fetch_era5.py --variable t2m
@@ -10,7 +13,9 @@ nc-to-npz-u10:
 	python fetch_era5.py --variable u10
 
 nc-to-npz-qpepre:
-	python fetch_qpepre.py
+	combine-rwrf-qpepre
+	python fetch_rwrf.py --variable qpepre
+
 nc-to-npz: nc-to-npz-t2m nc-to-npz-u10 nc-to-npz-qpepre
 
 plot-era5-t2m:
@@ -22,6 +27,8 @@ plot-rwrf-t2m:
 	python plot_var.py ./cache/rwrf/t2m_20190803_00.npz --source rwrf --variable t2m
 plot-rwrf-u10:
 	python plot_var.py ./cache/rwrf/u10_20190803_00.npz --source rwrf --variable u10
+plot-rwrf-qpepre:
+	python plot_var.py ./cache/rwrf/qpepre_20190803_00.npz --source rwrf --variable qpepre
 
 plot-era5: plot-era5-t2m plot-era5-u10
 plot-rwrf: plot-rwrf-t2m plot-rwrf-u10
