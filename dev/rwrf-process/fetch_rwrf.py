@@ -15,14 +15,19 @@ var_map = {
 
 
 def load_wrf_interp_nc(
-    date_str: str, hr_str: str, variable: Optional[str] = None
+    date_str: str,
+    hr_str: str,
+    variable: Optional[str] = None,
+    cropped_qpepre: bool = False,
 ) -> Dataset:
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
     folder = CONFIG.rwrf
     if variable == "qpepre":
-        # For qpepre, we load the interpolated NetCDF file after conversion
-        filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
+        if cropped_qpepre:
+            filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_cropped_qpepre.nc"
+        else:
+            filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
     else:
         filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp"
     ds = Dataset(filepath, mode="r")
@@ -30,10 +35,14 @@ def load_wrf_interp_nc(
 
 
 def save_t2m_numpy(
-    date_str: str, hr_str: str, variable: str, out_dir: str = "./cache/rwrf/"
+    date_str: str,
+    hr_str: str,
+    variable: str,
+    cropped_qpepre: bool = False,
+    out_dir: str = "./cache/rwrf/",
 ):
     # 1) load dataset
-    ds = load_wrf_interp_nc(date_str, hr_str, variable)
+    ds = load_wrf_interp_nc(date_str, hr_str, variable, cropped_qpepre)
     print("Variables in the dataset:", ds.variables.keys())
     # for var_name in ds.variables:
     #     var = ds.variables[var_name]
@@ -67,8 +76,13 @@ def main():
         required=True,
         help="Variable to extract:",
     )
+    parser.add_argument(
+        "--cropped-qpepre",
+        action="store_true",
+        help="Use cropped RWRF data by QPEPRE",
+    )
     args = parser.parse_args()
-    save_t2m_numpy("2019/08/03", "00", args.variable)
+    save_t2m_numpy("2019/08/03", "00", args.variable, args.cropped_qpepre)
 
 
 if __name__ == "__main__":

@@ -136,8 +136,56 @@ def copy_rwrf(date_str: str, hr_str: str) -> str:
     new_path = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
 
     shutil.copy(org_path, new_path)
-
     return new_path
+
+
+def crop_rwrf_by_qpepre(src_path: str) -> str:
+    cropped_rwrf_path = src_path.replace("qpepre.nc", "cropped_qpepre.nc")
+
+    with Dataset(src_path, "r") as src, Dataset(cropped_rwrf_path, "w") as dst:
+        qpepre = src.variables["qpepre"][0, :, :]
+        mask = ~np.isnan(qpepre)
+        if not np.any(mask):
+            os.remove(cropped_rwrf_path)
+            raise ValueError("No non-NaN values found in qpepre.")
+
+        coords = np.argwhere(mask)
+        min_row, min_col = coords.min(axis=0)
+        max_row, max_col = coords.max(axis=0)
+
+        # Copy dimensions (keep all the same except for spatial)
+        for name, dim in src.dimensions.items():
+            ny = max_row - min_row + 1
+            nx = max_col - min_col + 1
+            if name == "south_north":
+                dst.createDimension(name, ny)
+            elif name == "west_east":
+                dst.createDimension(name, nx)
+            else:
+                dst.createDimension(name, len(dim))
+
+        # Copy global attributes
+        for attr in src.ncattrs():
+            dst.setncattr(attr, src.getncattr(attr))
+
+        for name, var in src.variables.items():
+            if var.shape[-2:] == (
+                src.dimensions["south_north"].size,
+                src.dimensions["west_east"].size,
+            ):
+                newvar = dst.createVariable(name, var.datatype, var.dimensions)
+                for attr in var.ncattrs():
+                    newvar.setncattr(attr, var.getncattr(attr))
+
+                newvar[...] = var[..., min_row : max_row + 1, min_col : max_col + 1]
+            else:
+                newvar = dst.createVariable(name, var.datatype, var.dimensions)
+                newvar[:] = var[:]
+                for attr in var.ncattrs():
+                    newvar.setncattr(attr, var.getncattr(attr))
+
+    print(f"Cropped RWRF file saved to: {cropped_rwrf_path}")
+    return cropped_rwrf_path
 
 
 def store_rwrf_qpepre_dataset(date_str: str, hr_str: str):
@@ -157,9 +205,18 @@ def store_rwrf_qpepre_dataset(date_str: str, hr_str: str):
     print("Variables in the rwrf_qpepre dataset:", rwrf_ds.variables.keys())
     # for var_name in rwrf_ds.variables:
     #     var = rwrf_ds.variables[var_name]
-    #     print(f"{var_name}: shape {var.shape}")
+    #     print(
+    #         f"{var_name}: shape {var.shape} dtype {var.dtype} attributes {var.ncattrs()} dimensions {var.dimensions}"
+    #     )
+
+    # for name, dim in rwrf_ds.dimensions.items():
+    #     print(f"Dimension {name}: size {len(dim)}")
+
+    # for attr in rwrf_ds.ncattrs():
+    #     print(f"Global attribute {attr}: {rwrf_ds.getncattr(attr)}")
 
     rwrf_ds.close()
+    cropped_rwrf_path = crop_rwrf_by_qpepre(new_rwrf_path)
 
 
 def main():
