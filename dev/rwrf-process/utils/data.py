@@ -29,7 +29,7 @@ def decode_time(raw, source, variable):
                 time_str = str(raw)
             except Exception:
                 time_str = raw.tobytes().decode("utf-8").strip()
-        elif variable == "u10":
+        elif variable == "u10" or variable == "qpepre":
             from datetime import datetime, timezone
 
             dt = datetime.fromtimestamp(raw, tz=timezone.utc)
@@ -48,6 +48,8 @@ def extract_slice(var_data, lat, lon, source, variable):
             data_slice = var_data[0, 0, :, :] - 273.15  # K to C
         elif variable == "u10":
             data_slice = var_data[0, :, :]
+        elif variable == "qpepre":
+            data_slice = var_data[0, :, :] * 1000.0  # convert meters to mm
         lat_grid = lat
         lon_grid = lon
     else:  # rwrf
