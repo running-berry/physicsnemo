@@ -27,9 +27,6 @@ dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
 train_years: [2019] # Years to use for training
 train_dates: ['2019/08/03', '2019/08/03']
 valid_years: [2019] # Years to use for validation
-train_years: [2019] # Years to use for training
-train_dates: ['2019/08/03', '2019/08/03']
-valid_years: [2019] # Years to use for validation
 
 # Variable selection
 invariants: ["c"] # Invariant quantitites to include
