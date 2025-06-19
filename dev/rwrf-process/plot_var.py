@@ -30,7 +30,7 @@ def plot_var(lon, lat, field, time_str, source, variable, levels=20, figsize=(8,
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Plot 2m temperature from NPZ file.')
+    parser = argparse.ArgumentParser(description='Plot chosen variable from NPZ file.')
     parser.add_argument('path', help='Path to NPZ file')
     parser.add_argument('--source', choices=['era5', 'rwrf'], required=True,
                         help='Data source type')

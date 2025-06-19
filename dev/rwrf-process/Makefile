@@ -8,7 +8,10 @@ nc-to-npz-t2m:
 nc-to-npz-u10:
 	python fetch_rwrf.py --variable u10
 	python fetch_era5.py --variable u10
-nc-to-npz: nc-to-npz-t2m nc-to-npz-u10
+
+nc-to-npz-qpepre:
+	python fetch_qpepre.py
+nc-to-npz: nc-to-npz-t2m nc-to-npz-u10 nc-to-npz-qpepre
 
 plot-era5-t2m:
 	python plot_var.py ./cache/era5/t2m_20200601_00.npz --source era5 --variable t2m

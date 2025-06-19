@@ -5,6 +5,7 @@ class Config:
         self.dataset_paths = config_dict['dataset_paths']
         self.rwrf = self.dataset_paths['rwrf']
         self.era5 = self.dataset_paths['era5']
+        self.pptn = self.dataset_paths['pptn']
 
 # Load once at startup
 def load_config(config_path="./config.yaml"):
