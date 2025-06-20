@@ -1,0 +1,30 @@
+name: “Restrict Issue Creation”
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  restrict:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close unauthorized issues
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const allowed = ['owner-github-username'];
+            const actor   = context.actor;
+            const issue   = context.issue;
+
+            if (!allowed.includes(actor)) {
+              // close the issue
+              await github.issues.update({
+                ...issue,
+                state: 'closed'
+              });
+              // leave a comment explaining why
+              await github.issues.createComment({
+                ...issue,
+                body: `👋 Sorry, @${actor}, only ${allowed.map(u=>'@'+u).join(' and ')} may open issues on this repo.`
+              });
+            }
