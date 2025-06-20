@@ -12,6 +12,12 @@ test_datetime_last = "2019/08/03"
 test_years = [2019]
 cache_base = "./cache"
 data_base = "../data"
+experiment_name = (
+    "exp_"
+    + "-".join(channel_vars)  # TODO: maybe add in domain size?
+    + f"_{test_datetime_start.replace('/', '')}-{test_datetime_last.replace('/', '')}"
+)
+
 
 def create_dummy_arr(
     dt,
@@ -151,16 +157,25 @@ for fname in ["HighRes", "LowRes"]:
 
     data_shape = (total_hours, num_channel)+domain_size
     print(data_arr.shape)
-    year_data = xr.Dataset({
-    f'{fname}': (['time', 'channel', 'y', 'x'], data_arr),
-    'time': datetime_array,
-    'channel': channel_vars,
-    'latitude': (["y", "x"], lat_grid),
-    'longitude': (["y", "x"], lon_grid)
-    })
-    data_enc = {f'{fname}':{'dtype':'float32', 'compressor':None}}
-    year_data.to_zarr(f'{data_base}/{fname}/{year}.zarr', mode='w', consolidated=True, encoding=data_enc, zarr_format=2)
-    zarr.consolidate_metadata(f'{data_base}/{fname}/{year}.zarr')
+    year_data = xr.Dataset(
+        {
+            f"{fname}": (["time", "channel", "y", "x"], data_arr),
+            "time": datetime_array,
+            "channel": channel_vars,
+            "latitude": (["y", "x"], lat_grid),
+            "longitude": (["y", "x"], lon_grid),
+        }
+    )
+    data_enc = {f"{fname}": {"dtype": "float32", "compressor": None}}
+    year_data.to_zarr(
+        f"{data_base}/{fname}/{experiment_name}.zarr",
+        mode="w",
+        consolidated=True,
+        encoding=data_enc,
+        zarr_format=2,
+    )
+    zarr.consolidate_metadata(f"{data_base}/{fname}/{experiment_name}.zarr")
 
-
-    print(f"Data for {year} saved to {data_base}/{fname}/{year}.zarr")
+    print(
+        f"Data for {experiment_name} saved to {data_base}/{fname}/{experiment_name}.zarr"
+    )
