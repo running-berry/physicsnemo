@@ -1,3 +1,6 @@
+check_nc_file1 := ../data/example_nc/mine/t2m_20180101_00.nc
+check_nc_file2 := ../data/example_nc/ncdr/t2m_2018010100.nc
+
 run: clean
 	python create_data.py
 
@@ -50,3 +53,6 @@ env-fc:
 clean:
 	rm -rf ./HighRes
 	rm -rf ./LowRes
+
+check-nc:
+	python utils/check/check_nc.py $(check_nc_file1) $(check_nc_file2)
