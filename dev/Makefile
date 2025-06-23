@@ -33,6 +33,9 @@ clear_data:
 clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
+cp_rundir:
+	cp -r $(stormcast_dir)/rundir $(log_dir)/$$(date +%Y%m%d_%H%M)
+
 make_cache:
 	cd $(rwrf_dir) && \
 	$(MAKE) nc-to-npz-t2m
@@ -45,3 +48,4 @@ run:
 	$(MAKE) clear_rundir	
 	$(MAKE) make_data
 	$(MAKE) train
+	$(MAKE) cp_rundir		
