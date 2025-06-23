@@ -5,7 +5,7 @@ rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
 
 pull:
-	git pull origin fix/data-loader
+	git pull origin feat/train-pars
 
 make_dummy:
 	cd $(data_dir) && \
