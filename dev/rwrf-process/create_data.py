@@ -12,8 +12,8 @@ test_datetime_last = "2019/08/03"
 test_years = [2019]
 cache_base = "./cache"
 data_base = "../data"
-lon_min, lon_max = 121.00, 121.75
-lat_min, lat_max = 25.00, 25.75
+lon_min, lon_max = 121.00, 125.00
+lat_min, lat_max = 21.00, 25.00
 
 def create_dummy_arr(
     dt,
