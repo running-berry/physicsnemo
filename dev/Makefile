@@ -48,6 +48,6 @@ run:
 	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
-	$(MAKE) make_data
+	$(MAKE) make_dummy
 	$(MAKE) train
 	$(MAKE) cp_rundir		
