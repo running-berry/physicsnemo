@@ -3,6 +3,7 @@ stormcast_dir := ../examples/generative/stormcast/
 data_dir := ./data
 rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
+output_dir := /workspace/dev/output
 
 pull:
 	git pull origin feat/train-pars
@@ -35,6 +36,7 @@ clear_rundir:
 
 cp_rundir:
 	cp -r $(stormcast_dir)/rundir $(log_dir)/$$(date +%Y%m%d_%H%M)
+	cp -r $(stormcast_dir)/rundir/stormcast-training/0/images $(output_dir)/imgs_$$(date +%Y%m%d_%H%M)
 
 make_cache:
 	cd $(rwrf_dir) && \
