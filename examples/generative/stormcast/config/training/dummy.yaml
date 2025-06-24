@@ -38,11 +38,11 @@ batch_size: 2 # Total training batch size -- must be >= (and divisble by) number
 batch_size_per_gpu: "auto" # Batch size on each GPU, set to an int to force smaller local batch with gradient accumulation
 lr: 4E-4 # Initial learning rate
 lr_rampup_steps: 1000 # Number of training steps over which to perform linear LR warmup
-total_train_steps: 16000 # Number of total training steps, 16000 with batch size 64 corresponds to StormCast paper regression
+total_train_steps: 160 # Number of total training steps, 16000 with batch size 64 corresponds to StormCast paper regression
 clip_grad_norm: -1 # Threshold for gradient clipping, set to -1 to disable
 loss: 'regression' # Loss type; use 'regression' or 'edm' for the regression and diffusion, respectively
 fp_optimizations: fp32 # Floating point mode, one of ["fp32", "amp-fp16", "amp-bf16"]
 compile_model: False # use torch.compile to compile model
 
 # Validation options
-validation_plot_variables: ["a", "b"]
+validation_plot_variables: ["t2m"]

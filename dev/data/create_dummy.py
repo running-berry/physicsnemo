@@ -8,6 +8,8 @@ domain_size = (16, 16)
 test_datetime_start = "2019/08/03"
 test_datetime_last = "2019/08/03"
 test_years = [2019]
+lon_min, lon_max = 121.00, 121.75
+lat_min, lat_max = 25.00, 25.75
 
 for fname in ["DummyHighRes", "DummyLowRes"]:
     folder_path=f"{fname}/stats"
@@ -18,9 +20,6 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
     np.save(f"{folder_path}/means.npy", np.random.rand(num_channel,).astype(np.float32))
     np.save(f"{folder_path}/stds.npy", np.random.rand(num_channel,).astype(np.float32))
 
-    # an example
-    lon_min, lon_max = 121.00, 121.75
-    lat_min, lat_max = 25.00, 25.75
     lon = np.linspace(lon_min, lon_max, domain_size[0])
     lat = np.linspace(lat_min, lat_max, domain_size[1])
     lon_grid, lat_grid = np.meshgrid(lon, lat)
