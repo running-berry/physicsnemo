@@ -42,9 +42,9 @@ def plot_field(lon, lat, data, time_str, variable, source, boundaries, ax, level
         cmap = plt.cm.jet
         label = "u10 (m/s)"
         title = f"{source.upper()} 10m u-component of wind at {time_str}"
-    elif variable == "qpepre":
+    elif variable == "pptn":
         cmap = "viridis"
-        label = "QPEPRE (mm)"
+        label = "pptn (mm)"
         title = f"{source.upper()} Total Precipitation at {time_str}"
 
     cs = ax.contourf(
@@ -64,7 +64,7 @@ def main():
     parser.add_argument("--rwrf_path", help="Path to RWRF NPZ file", required=True)
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "qpepre"],
+        choices=["t2m", "u10", "pptn"],
         required=True,
         help="Variable to plot",
     )

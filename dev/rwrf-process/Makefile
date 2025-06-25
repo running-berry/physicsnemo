@@ -12,37 +12,37 @@ nc-to-npz-u10:
 	python fetch_rwrf.py --variable u10
 	python fetch_era5.py --variable u10
 
-nc-to-npz-qpepre:
+nc-to-npz-pptn:
 	python combine_rwrf_qpepre.py
-	python fetch_rwrf.py --variable qpepre
-	python fetch_era5.py --variable qpepre
+	python fetch_rwrf.py --variable pptn
+	python fetch_era5.py --variable pptn
 
 nc-to-npz-cropped-qpepre:
 	python combine_rwrf_qpepre.py
-	python fetch_rwrf.py --variable qpepre --cropped-qpepre
-	python fetch_era5.py --variable qpepre
+	python fetch_rwrf.py --variable pptn --cropped-qpepre
+	python fetch_era5.py --variable pptn
 
-nc-to-npz: nc-to-npz-t2m nc-to-npz-u10 nc-to-npz-qpepre
+nc-to-npz: nc-to-npz-t2m nc-to-npz-u10 nc-to-npz-pptn
 
 plot-era5-t2m:
 	python plot_var.py ./cache/era5/t2m_20200601_00.npz --source era5 --variable t2m
 plot-era5-u10:
 	python plot_var.py ./cache/era5/u10_20200601_00.npz --source era5 --variable u10
-plot-era5-qpepre:
-	python plot_var.py ./cache/era5/qpepre_20190803_00.npz --source era5 --variable qpepre
+plot-era5-pptn:
+	python plot_var.py ./cache/era5/pptn_20190803_00.npz --source era5 --variable pptn
 
 plot-rwrf-t2m:
 	python plot_var.py ./cache/rwrf/t2m_20190803_00.npz --source rwrf --variable t2m
 plot-rwrf-u10:
 	python plot_var.py ./cache/rwrf/u10_20190803_00.npz --source rwrf --variable u10
-plot-rwrf-qpepre:
-	python plot_var.py ./cache/rwrf/qpepre_20190803_00.npz --source rwrf --variable qpepre
+plot-rwrf-pptn:
+	python plot_var.py ./cache/rwrf/pptn_20190803_00.npz --source rwrf --variable pptn
 
-plot-era5: plot-era5-t2m plot-era5-u10 plot-era5-qpepre
-plot-rwrf: plot-rwrf-t2m plot-rwrf-u10 plot-rwrf-qpepre
+plot-era5: plot-era5-t2m plot-era5-u10 plot-era5-pptn
+plot-rwrf: plot-rwrf-t2m plot-rwrf-u10 plot-rwrf-pptn
 plot-t2m: plot-era5-t2m plot-rwrf-t2m
 plot-u10: plot-era5-u10 plot-rwrf-u10
-plot-qpepre: plot-era5-qpepre plot-rwrf-qpepre
+plot-pptn: plot-era5-pptn plot-rwrf-pptn
 
 align-plot-t2m:
 	python align.py --era5_path ./cache/era5/t2m_20200601_00.npz --rwrf_path ./cache/rwrf/t2m_20190803_00.npz  --variable t2m
@@ -50,9 +50,9 @@ align-plot-t2m:
 align-plot-u10:
 	python align.py --era5_path ./cache/era5/u10_20200601_00.npz --rwrf_path ./cache/rwrf/u10_20190803_00.npz  --variable u10
 
-align-plot-qpepre:
-	python align.py --era5_path ./cache/era5/qpepre_20190803_00.npz --rwrf_path ./cache/rwrf/qpepre_20190803_00.npz  --variable qpepre
-align-plot: align-plot-t2m align-plot-u10 align-plot-qpepre
+align-plot-pptn:
+	python align.py --era5_path ./cache/era5/pptn_20190803_00.npz --rwrf_path ./cache/rwrf/pptn_20190803_00.npz  --variable pptn
+align-plot: align-plot-t2m align-plot-u10 align-plot-pptn
 
 interpolate-plot-t2m:
 	python interpolate.py --era5_path ./cache/era5/t2m_20200601_00.npz --rwrf_path ./cache/rwrf/t2m_20190803_00.npz  --variable t2m

@@ -13,8 +13,8 @@ def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
         filepath = dt.strftime(f"{folder}/t2m_%Y%m%d_") + hr_str.zfill(2) + ".nc"
     elif variable == "u10":
         filepath = dt.strftime(f"{folder}/u10_%Y%m%d_") + hr_str.zfill(2) + ".nc"
-    elif variable == "qpepre":
-        filepath = dt.strftime(f"{folder}/qpepre_%Y%m%d_") + hr_str.zfill(2) + ".nc"
+    elif variable == "pptn":
+        filepath = dt.strftime(f"{folder}/tp_%Y%m%d_") + hr_str.zfill(2) + ".nc"
     ds = Dataset(filepath, mode="r")
 
     return ds
@@ -41,7 +41,7 @@ def save_t2m_numpy(
         lon = ds.variables["longitude"][:]
         times = ds.variables["valid_time"][:]  # unix format
         data = ds.variables["u10"][:]  # often shape (time, y, x)
-    elif variable == "qpepre":
+    elif variable == "pptn":
         lat = ds.variables["latitude"][:]
         lon = ds.variables["longitude"][:]
         times = ds.variables["valid_time"][:]  # unix format
@@ -64,7 +64,7 @@ def main():
     )
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "qpepre"],
+        choices=["t2m", "u10", "pptn"],
         required=True,
         help="Variable to extract:",
     )

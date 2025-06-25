@@ -18,11 +18,11 @@ def plot_var(lon, lat, field, time_str, source, variable, levels=20, figsize=(8,
         label = "u10 (m/s)"
         title = f"10m u-component of wind at {time_str}"
         img_path = f"u10_{source}_{time_str}.png"
-    elif variable == "qpepre":
+    elif variable == "pptn":
         cmap = "viridis"
-        label = "QPEPRE (mm)"
-        title = f"QPEPRE at {time_str}"
-        img_path = f"qpepre_{source}_{time_str}.png"
+        label = "pptn (mm)"
+        title = f"pptn at {time_str}"
+        img_path = f"pptn_{source}_{time_str}.png"
 
     cs = plt.contourf(lon, lat, field, levels=levels, cmap=cmap)
     plt.colorbar(cs, label=label)
@@ -42,7 +42,7 @@ def main():
     )
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "qpepre"],
+        choices=["t2m", "u10", "pptn"],
         required=True,
         help="Variable to plot",
     )

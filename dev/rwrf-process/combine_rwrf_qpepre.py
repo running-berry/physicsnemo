@@ -19,7 +19,7 @@ def get_filename_from_date(date_str: str, hr_str: str) -> str:
     start_str = dt_start.strftime("%Y%m%d%H%M")
     end_str = dt_end.strftime("%Y%m%d%H%M")
 
-    folder = CONFIG.pptn
+    folder = CONFIG.qpepre
     filepath = f"{folder}/qpepre_{start_str}-{end_str}_1_h"
     return filepath
 
@@ -94,29 +94,55 @@ def convert_txt_to_nc(date_str: str, hr_str: str, var_name="qpepre"):
     print(f"Converted {txt_path} to {nc_path}")
 
 
-def combine_rwrf_qpepre(rwrf: Dataset, qpepre: Dataset):
+def combine_rwrf_qpepre(rwrf: Dataset, qpepre: Dataset, output_path: str):
     """
-    Combine RWRF and QPEPRE datasets into a single xarray Dataset.
-    Interpolates QPEPRE onto the RWRF grid.
+    Combine RWRF and QPEPRE datasets into a new NetCDF file.
+    Copies RWRF data and adds interpolated QPEPRE data.
     """
-    rwrf_lat2d = rwrf["XLAT"][0, :]
-    rwrf_lon2d = rwrf["XLONG"][0, :]
+    with Dataset(output_path, "w", format=rwrf.file_format) as rwrf_qpepre_ds:
+        # Copy dimensions
+        for name, dimension in rwrf.dimensions.items():
+            rwrf_qpepre_ds.createDimension(
+                name, (len(dimension) if not dimension.isunlimited() else None)
+            )
 
-    qpepre_lat1d = qpepre["lat"][0, :]
-    qpepre_lon1d = qpepre["lon"][0, :]
-    qpepre_var2d = qpepre["qpepre"][0, :, :]
+        # Copy global attributes
+        for attr_name in rwrf.ncattrs():
+            rwrf_qpepre_ds.setncattr(attr_name, rwrf.getncattr(attr_name))
 
-    qpepre_lon2d, qpepre_lat2d = np.meshgrid(qpepre_lon1d, qpepre_lat1d)
-    points = np.column_stack((qpepre_lat2d.ravel(), qpepre_lon2d.ravel()))
-    values = qpepre_var2d.ravel()
-    target_points = np.column_stack((rwrf_lat2d.ravel(), rwrf_lon2d.ravel()))
+        # Copy variables from source to destination
+        for name, variable in rwrf.variables.items():
+            out_var = rwrf_qpepre_ds.createVariable(
+                name, variable.datatype, variable.dimensions
+            )
+            for attr_name in variable.ncattrs():
+                out_var.setncattr(attr_name, variable.getncattr(attr_name))
+            out_var[:] = variable[:]
 
-    interpolated = griddata(
-        points, values, target_points, method="linear", fill_value=np.nan
-    )
-    interpolated_2d = interpolated.reshape(rwrf_lat2d.shape)
-    var = rwrf.createVariable("qpepre", "f4", rwrf["XLAT"].dimensions)
-    var[0, :, :] = interpolated_2d
+        # Interpolate QPEPRE data onto RWRF grid
+        rwrf_lat2d = rwrf["XLAT"][0, :]
+        rwrf_lon2d = rwrf["XLONG"][0, :]
+
+        qpepre_lat1d = qpepre["lat"][0, :]
+        qpepre_lon1d = qpepre["lon"][0, :]
+        qpepre_var2d = qpepre["qpepre"][0, :, :]
+
+        qpepre_lon2d, qpepre_lat2d = np.meshgrid(qpepre_lon1d, qpepre_lat1d)
+        points = np.column_stack((qpepre_lat2d.ravel(), qpepre_lon2d.ravel()))
+        values = qpepre_var2d.ravel()
+        target_points = np.column_stack((rwrf_lat2d.ravel(), rwrf_lon2d.ravel()))
+
+        interpolated = griddata(
+            points, values, target_points, method="linear", fill_value=np.nan
+        )
+        interpolated_2d = interpolated.reshape(rwrf_lat2d.shape)
+
+        # Create and write the new 'qpepre' variable
+        var = rwrf_qpepre_ds.createVariable("qpepre", "f4", rwrf["XLAT"].dimensions)
+        var.description = "Precipitation from QPEPRE, interpolated to RWRF grid"
+        var.units = "mm/hr"
+        var[0, :, :] = interpolated_2d
+    print(f"Created combined RWRF-QPEPRE file: {output_path}")
 
 
 def load_pptn_interp_nc(date_str: str, hr_str: str) -> Dataset:
@@ -125,18 +151,16 @@ def load_pptn_interp_nc(date_str: str, hr_str: str) -> Dataset:
     return ds
 
 
-def copy_rwrf(date_str: str, hr_str: str) -> str:
+def get_rwrf_paths(date_str: str, hr_str: str) -> tuple[str, str]:
     """
-    Copy RWRF .nc file from original path to new path.
+    Get the original RWRF file path and the path for the new combined file.
     """
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
     folder = CONFIG.rwrf
     org_path = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp"
     new_path = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
-
-    shutil.copy(org_path, new_path)
-    return new_path
+    return org_path, new_path
 
 
 def crop_rwrf_by_qpepre(src_path: str) -> str:
@@ -190,32 +214,35 @@ def crop_rwrf_by_qpepre(src_path: str) -> str:
 
 def store_rwrf_qpepre_dataset(date_str: str, hr_str: str):
     convert_txt_to_nc(date_str, hr_str)
+    org_rwrf_path, new_rwrf_path = get_rwrf_paths(date_str, hr_str)
 
     ds = load_pptn_interp_nc(date_str, hr_str)
-    new_rwrf_path = copy_rwrf(date_str, hr_str)
-    rwrf_ds = Dataset(new_rwrf_path, mode="a")
-    combine_rwrf_qpepre(rwrf_ds, ds)
+    rwrf_ds = Dataset(org_rwrf_path, mode="r")
+    combine_rwrf_qpepre(rwrf_ds, ds, new_rwrf_path)
+    rwrf_ds.close()
 
-    print("Variables in the pptn dataset:", ds.variables.keys())
+    print("Variables in the qpepre dataset:", ds.variables.keys())
     # for var_name in ds.variables:
     #     var = ds.variables[var_name]
     #     print(f"{var_name}: shape {var.shape}")
     ds.close()
 
-    print("Variables in the rwrf_qpepre dataset:", rwrf_ds.variables.keys())
-    # for var_name in rwrf_ds.variables:
-    #     var = rwrf_ds.variables[var_name]
+    rwrf_qpepre_ds = Dataset(new_rwrf_path, mode="r")
+
+    print("Variables in the rwrf_qpepre dataset:", rwrf_qpepre_ds.variables.keys())
+    # for var_name in rwrf_qpepre_ds.variables:
+    #     var = rwrf_qpepre_ds.variables[var_name]
     #     print(
     #         f"{var_name}: shape {var.shape} dtype {var.dtype} attributes {var.ncattrs()} dimensions {var.dimensions}"
     #     )
 
-    # for name, dim in rwrf_ds.dimensions.items():
+    # for name, dim in rwrf_qpepre_ds.dimensions.items():
     #     print(f"Dimension {name}: size {len(dim)}")
 
-    # for attr in rwrf_ds.ncattrs():
-    #     print(f"Global attribute {attr}: {rwrf_ds.getncattr(attr)}")
+    # for attr in rwrf_qpepre_ds.ncattrs():
+    #     print(f"Global attribute {attr}: {rwrf_qpepre_ds.getncattr(attr)}")
 
-    rwrf_ds.close()
+    rwrf_qpepre_ds.close()
     cropped_rwrf_path = crop_rwrf_by_qpepre(new_rwrf_path)
 
 

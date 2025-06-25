@@ -7,7 +7,7 @@ def load_data(path, source, variable):
     """
     if source not in ["era5", "rwrf"]:
         raise ValueError(f"Unknown source: {source}")
-    if variable not in ["t2m", "u10", "qpepre"]:
+    if variable not in ["t2m", "u10", "pptn"]:
         raise ValueError(f"Unknown variable: {variable}")
 
     data = np.load(path, allow_pickle=True)
@@ -29,7 +29,7 @@ def decode_time(raw, source, variable):
                 time_str = str(raw)
             except Exception:
                 time_str = raw.tobytes().decode("utf-8").strip()
-        elif variable == "u10" or variable == "qpepre":
+        elif variable == "u10" or variable == "pptn":
             from datetime import datetime, timezone
 
             dt = datetime.fromtimestamp(raw, tz=timezone.utc)
@@ -48,7 +48,7 @@ def extract_slice(var_data, lat, lon, source, variable):
             data_slice = var_data[0, 0, :, :] - 273.15  # K to C
         elif variable == "u10":
             data_slice = var_data[0, :, :]
-        elif variable == "qpepre":
+        elif variable == "pptn":
             data_slice = var_data[0, :, :] * 1000.0  # convert meters to mm
         lat_grid = lat
         lon_grid = lon

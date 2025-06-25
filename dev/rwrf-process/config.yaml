@@ -1,4 +1,4 @@
 dataset_paths:
   rwrf: "../data/rwrf"
   era5: "../data/era5/train"
-  pptn: "../data/pptn"
+  qpepre: "../data/pptn"

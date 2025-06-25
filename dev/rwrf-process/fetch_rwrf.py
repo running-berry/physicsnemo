@@ -9,7 +9,7 @@ from typing import Optional
 var_map = {
     "t2m": "T2",
     "u10": "umet10",
-    "qpepre": "qpepre",
+    "pptn": "qpepre",
     # add any others here...
 }
 
@@ -23,7 +23,7 @@ def load_wrf_interp_nc(
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
     folder = CONFIG.rwrf
-    if variable == "qpepre":
+    if variable == "pptn":
         if cropped_qpepre:
             filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_cropped_qpepre.nc"
         else:
@@ -44,9 +44,6 @@ def save_t2m_numpy(
     # 1) load dataset
     ds = load_wrf_interp_nc(date_str, hr_str, variable, cropped_qpepre)
     print("Variables in the dataset:", ds.variables.keys())
-    # for var_name in ds.variables:
-    #     var = ds.variables[var_name]
-    #     print(f"{var_name}: shape {var.shape}")
 
     # 2) grab the raw arrays
     data = ds.variables[var_map.get(variable, variable)][:]
@@ -72,7 +69,7 @@ def main():
     )
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "qpepre"],
+        choices=["t2m", "u10", "pptn"],
         required=True,
         help="Variable to extract:",
     )
