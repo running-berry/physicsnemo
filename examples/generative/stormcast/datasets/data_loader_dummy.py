@@ -29,9 +29,9 @@ from .dataset import StormCastDataset
 logger = PythonLogger("dataset")
 
 
-class Dataset(StormCastDataset):
+class DummyDataset(StormCastDataset):
     """
-    Paired dataset object serving time-synchronized pairs of LowRes and HighRes samples
+    Paired dataset object serving time-synchronized pairs of DummyLowRes and DummyHighRes samples
     TODO
     """
 
@@ -51,48 +51,48 @@ class Dataset(StormCastDataset):
         self.normalize = True
         self._get_files_stats()
 
-        self.kept_LowRes_channels = (
-            self.LowRes_channels
-            if params.kept_LowRes_channels == "all"
-            else params.kept_LowRes_channels
+        self.kept_DummyLowRes_channels = (
+            self.DummyLowRes_channels
+            if params.kept_DummyLowRes_channels == "all"
+            else params.kept_DummyLowRes_channels
         )
-        self.kept_HighRes_channels = (
-            self.HighRes_channels
-            if params.kept_HighRes_channels == "all"
-            else params.kept_HighRes_channels
+        self.kept_DummyHighRes_channels = (
+            self.DummyHighRes_channels
+            if params.kept_DummyHighRes_channels == "all"
+            else params.kept_DummyHighRes_channels
         )
-        kept_LowRes_idx = [self.LowRes_channels.index(c) for c in self.kept_LowRes_channels]
-        kept_HighRes_idx = [self.HighRes_channels.index(c) for c in self.kept_HighRes_channels]
+        kept_DummyLowRes_idx = [self.DummyLowRes_channels.index(c) for c in self.kept_DummyLowRes_channels]
+        kept_DummyHighRes_idx = [self.DummyHighRes_channels.index(c) for c in self.kept_DummyHighRes_channels]
 
-        self.means_HighRes = np.load(
+        self.means_DummyHighRes = np.load(
             os.path.join(
-                self.location, "HighRes", "stats", "means.npy"
+                self.location, "DummyHighRes", "stats", "means.npy"
             )
-        )[kept_HighRes_idx, None, None]
-        self.stds_HighRes = np.load(
+        )[kept_DummyHighRes_idx, None, None]
+        self.stds_DummyHighRes = np.load(
             os.path.join(
-                self.location, "HighRes", "stats", "stds.npy"
+                self.location, "DummyHighRes", "stats", "stds.npy"
             )
-        )[kept_HighRes_idx, None, None]
-        self.means_LowRes = np.load(
-            os.path.join(self.location, "LowRes", "stats", "means.npy")
-        )[kept_LowRes_idx, None, None]
-        self.stds_LowRes = np.load(
-            os.path.join(self.location, "LowRes", "stats", "stds.npy")
-        )[kept_LowRes_idx, None, None]
+        )[kept_DummyHighRes_idx, None, None]
+        self.means_DummyLowRes = np.load(
+            os.path.join(self.location, "DummyLowRes", "stats", "means.npy")
+        )[kept_DummyLowRes_idx, None, None]
+        self.stds_DummyLowRes = np.load(
+            os.path.join(self.location, "DummyLowRes", "stats", "stds.npy")
+        )[kept_DummyLowRes_idx, None, None]
         self.invariants = params.invariants
 
     def background_channels(self):
         """Metadata for the background channels. A list of channel names, one for each channel"""
-        return self.kept_LowRes_channels
+        return self.kept_DummyLowRes_channels
 
     def state_channels(self):
         """Metadata for the state channels. A list of channel names, one for each channel"""
-        return self.kept_HighRes_channels
+        return self.kept_DummyHighRes_channels
 
     def image_shape(self):
         """Get the (height, width) of the data (same for input and output)."""
-        return tuple(self.params.HighRes_img_size)
+        return tuple(self.params.DummyHighRes_img_size)
 
     def get_invariants(self):
         """Return invariants used for training, or None if no invariants are used."""
@@ -100,108 +100,108 @@ class Dataset(StormCastDataset):
 
     def _get_files_stats(self):
         """
-        Scan directories and extract metadata for LowRes and HighRes
+        Scan directories and extract metadata for DummyLowRes and DummyHighRes
         """
 
-        # LowRes parsing
-        self.LowRes_paths = glob.glob(
-            os.path.join(self.location, "LowRes", "**", "????.zarr"), recursive=True
+        # DummyLowRes parsing
+        self.DummyLowRes_paths = glob.glob(
+            os.path.join(self.location, "DummyLowRes", "**", "????.zarr"), recursive=True
         )
 
-        self.LowRes_paths = sorted(
-            self.LowRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
+        self.DummyLowRes_paths = sorted(
+            self.DummyLowRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
         )
 
-        self.logger0.info(f"list of all LowRes paths: {self.LowRes_paths}")
+        self.logger0.info(f"list of all DummyLowRes paths: {self.DummyLowRes_paths}")
 
         if self.train:
             # keep only years specified in the params.train_years list
-            self.LowRes_paths = [
+            self.DummyLowRes_paths = [
                 x
-                for x in self.LowRes_paths
+                for x in self.DummyLowRes_paths
                 if int(os.path.basename(x).replace(".zarr", ""))
                 in self.params.train_years
             ]
             self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.LowRes_paths
+                int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyLowRes_paths
             ]
         else:
             # keep only years specified in the params.valid_years list
-            self.LowRes_paths = [
+            self.DummyLowRes_paths = [
                 x
-                for x in self.LowRes_paths
+                for x in self.DummyLowRes_paths
                 if int(os.path.basename(x).replace(".zarr", ""))
                 in self.params.valid_years
             ]
             self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.LowRes_paths
+                int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyLowRes_paths
             ]
 
-        self.logger0.info(f"list of all LowRes paths after filtering: {self.LowRes_paths}")
-        self.n_years = len(self.LowRes_paths)
+        self.logger0.info(f"list of all DummyLowRes paths after filtering: {self.DummyLowRes_paths}")
+        self.n_years = len(self.DummyLowRes_paths)
 
-        with xr.open_zarr(self.LowRes_paths[0], consolidated=True) as ds:
-            self.LowRes_channels = list(ds.channel.values)
-            self.LowRes_lat = ds.latitude
-            self.LowRes_lon = ds.longitude
+        with xr.open_zarr(self.DummyLowRes_paths[0], consolidated=True) as ds:
+            self.DummyLowRes_channels = list(ds.channel.values)
+            self.DummyLowRes_lat = ds.latitude
+            self.DummyLowRes_lon = ds.longitude
 
         self.n_samples_total = self.compute_total_samples()
-        self.ds_LowRes = [
-            xr.open_zarr(self.LowRes_paths[i], consolidated=True)
+        self.ds_DummyLowRes = [
+            xr.open_zarr(self.DummyLowRes_paths[i], consolidated=True)
             for i in range(self.n_years)
         ]
 
-        # HighRes parsing
-        self.HighRes_paths = glob.glob(
-            os.path.join(self.location, "HighRes", "**", "????.zarr"),
+        # DummyHighRes parsing
+        self.DummyHighRes_paths = glob.glob(
+            os.path.join(self.location, "DummyHighRes", "**", "????.zarr"),
             recursive=True,
         )
-        self.logger0.info(f"list of all HighRes paths: {self.HighRes_paths}")
-        self.HighRes_paths = sorted(
-            self.HighRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
+        self.logger0.info(f"list of all DummyHighRes paths: {self.DummyHighRes_paths}")
+        self.DummyHighRes_paths = sorted(
+            self.DummyHighRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
         )
         if self.train:
             # keep only years specified in the params.train_years list
-            self.HighRes_paths = [
+            self.DummyHighRes_paths = [
                 x
-                for x in self.HighRes_paths
+                for x in self.DummyHighRes_paths
                 if int(os.path.basename(x).replace(".zarr", ""))
                 in self.params.train_years
             ]
             self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+                int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyHighRes_paths
             ]
         else:
             # keep only years specified in the params.valid_years list
-            self.HighRes_paths = [
+            self.DummyHighRes_paths = [
                 x
-                for x in self.HighRes_paths
+                for x in self.DummyHighRes_paths
                 if int(os.path.basename(x).replace(".zarr", ""))
                 in self.params.valid_years
             ]
             self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+                int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyHighRes_paths
             ]
 
-        self.logger0.info(f"list of all HighRes paths after filtering: {self.HighRes_paths}")
+        self.logger0.info(f"list of all DummyHighRes paths after filtering: {self.DummyHighRes_paths}")
 
-        years = [int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths]
+        years = [int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyHighRes_paths]
         self.logger0.info(f"years: {years}")
         self.logger0.info(f"self.years: {self.years}")
         
         assert (
             years == self.years
-        ), "Number of years for LowRes in %s and HighRes in %s must match" % (
-            os.path.join(self.location, "LowRes/*.zarr"),
-            os.path.join(self.location, "HighRes/*.zarr"),
+        ), "Number of years for DummyLowRes in %s and DummyHighRes in %s must match" % (
+            os.path.join(self.location, "DummyLowRes/*.zarr"),
+            os.path.join(self.location, "DummyHighRes/*.zarr"),
         )
-        with xr.open_zarr(self.HighRes_paths[0], consolidated=True) as ds:
-            self.HighRes_channels = list(ds.channel.values)
-            self.HighRes_lat = ds.latitude
-            self.HighRes_lon = ds.longitude
+        with xr.open_zarr(self.DummyHighRes_paths[0], consolidated=True) as ds:
+            self.DummyHighRes_channels = list(ds.channel.values)
+            self.DummyHighRes_lat = ds.latitude
+            self.DummyHighRes_lon = ds.longitude
             
-        self.ds_HighRes = [
-            xr.open_zarr(self.HighRes_paths[i], consolidated=True, mask_and_scale=False)
+        self.ds_DummyHighRes = [
+            xr.open_zarr(self.DummyHighRes_paths[i], consolidated=True, mask_and_scale=False)
             for i in range(self.n_years)
         ]
 
@@ -266,55 +266,55 @@ class Dataset(StormCastDataset):
     def normalize_background(self, x: np.ndarray) -> np.ndarray:
         """Convert background from physical units to normalized data."""
         if self.normalize:
-            x -= self.means_LowRes
-            x /= self.stds_LowRes
+            x -= self.means_DummyLowRes
+            x /= self.stds_DummyLowRes
         return x
 
     def denormalize_background(self, x: np.ndarray) -> np.ndarray:
         """Convert background from normalized data to physical units."""
         if self.normalize:
-            x *= self.stds_LowRes
-            x += self.means_LowRes
+            x *= self.stds_DummyLowRes
+            x += self.means_DummyLowRes
         return x
 
     def normalize_state(self, x: np.ndarray) -> np.ndarray:
         """Convert state from physical units to normalized data."""
         if self.normalize:
-            x -= self.means_HighRes
-            x /= self.stds_HighRes
+            x -= self.means_DummyHighRes
+            x /= self.stds_DummyHighRes
         return x
 
     def denormalize_state(self, x: np.ndarray) -> np.ndarray:
         """Convert state from normalized data to physical units."""
         if self.normalize:
-            x *= self.stds_HighRes
-            x += self.means_HighRes
+            x *= self.stds_DummyHighRes
+            x += self.means_DummyHighRes
         return x
 
-    def _get_LowRes(self, ts_inp, ts_tar):
+    def _get_DummyLowRes(self, ts_inp, ts_tar):
         """
-        Retrieve LowRes samples from zarr files
+        Retrieve DummyLowRes samples from zarr files
         """
 
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
-            self.ds_LowRes, self.LowRes_paths, ts_inp, ts_tar
+            self.ds_DummyLowRes, self.DummyLowRes_paths, ts_inp, ts_tar
         )
 
-        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels).LowRes.values
+        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_DummyLowRes_channels).DummyLowRes.values
 
         inp = self.normalize_background(inp_field)
         return torch.as_tensor(inp)
 
-    def _get_HighRes(self, ts_inp, ts_tar):
+    def _get_DummyHighRes(self, ts_inp, ts_tar):
         """
-        Retrieve HighRes samples from zarr files
+        Retrieve DummyHighRes samples from zarr files
         """
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
-            self.ds_HighRes, self.HighRes_paths, ts_inp, ts_tar
+            self.ds_DummyHighRes, self.DummyHighRes_paths, ts_inp, ts_tar
         )
 
-        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_HighRes_channels).HighRes.values
-        tar_field = ds_tar.sel(time=ts_tar, channel=self.kept_HighRes_channels).HighRes.values
+        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_DummyHighRes_channels).DummyHighRes.values
+        tar_field = ds_tar.sel(time=ts_tar, channel=self.kept_DummyHighRes_channels).DummyHighRes.values
 
         inp, tar = self.normalize_state(inp_field), self.normalize_state(tar_field)
 
@@ -325,11 +325,11 @@ class Dataset(StormCastDataset):
         Return data as a dict
         """
         time_pair = self._global_idx_to_datetime(global_idx)
-        HighRes_pair = self._get_HighRes(*time_pair)
-        LowRes_pair = self._get_LowRes(*time_pair)
+        DummyHighRes_pair = self._get_DummyHighRes(*time_pair)
+        DummyLowRes_pair = self._get_DummyLowRes(*time_pair)
         return {
-            "background": LowRes_pair,
-            "state": HighRes_pair,
+            "background": DummyLowRes_pair,
+            "state": DummyHighRes_pair,
         }
 
     def _global_idx_to_datetime(self, global_idx):

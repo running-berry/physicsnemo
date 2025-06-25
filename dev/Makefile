@@ -1,14 +1,19 @@
 # Makefile
 stormcast_dir := ../examples/generative/stormcast/
 data_dir := ./data
-log_dir := ../../../dev/logs
+rwrf_dir := ./rwrf-process
+log_dir := /workspace/dev/logs
 
 pull:
-	git pull origin fix/data-loader
+	git pull origin
 
-make_data:
+make_dummy:
 	cd $(data_dir) && \
 	python create_dummy.py
+
+make_data:
+	cd $(rwrf_dir) && \
+	python create_data.py
 
 log_dir:
 	mkdir -p $(log_dir)
@@ -22,13 +27,20 @@ train:
 clear_data:
 	rm -rf $(data_dir)/DummyHighRes
 	rm -rf $(data_dir)/DummyLowRes	
+	rm -rf $(data_dir)/HighRes
+	rm -rf $(data_dir)/LowRes	
 
 clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
+make_cache:
+	cd $(rwrf_dir) && \
+	$(MAKE) nc-to-npz-t2m
+
 run:
-	$(MAKE) pull
 	$(MAKE) log_dir
+	$(MAKE) make_cache
 	$(MAKE) clear_data	
+	$(MAKE) clear_rundir	
 	$(MAKE) make_data
 	$(MAKE) train

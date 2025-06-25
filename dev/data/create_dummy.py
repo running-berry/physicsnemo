@@ -2,11 +2,12 @@ import os
 import xarray as xr
 import numpy as np
 
-num_channel = 5
+channel_vars = ['t2m']
+num_channel = len(channel_vars)
 domain_size = (32, 32)
-test_datetime_start = "2025/05/01"
-test_datetime_last = "2025/05/15"
-test_years = [2025]
+test_datetime_start = "2019/08/03"
+test_datetime_last = "2019/08/03"
+test_years = [2019]
 
 for fname in ["DummyHighRes", "DummyLowRes"]:
     folder_path=f"{fname}/stats"
@@ -18,8 +19,8 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
     np.save(f"{folder_path}/stds.npy", np.random.rand(num_channel,).astype(np.float32))
 
     # an example
-    lon_min, lon_max = 272.28, 272.32
-    lat_min, lat_max = 42.06, 42.02   
+    lon_min, lon_max = 121.00, 121.75
+    lat_min, lat_max = 25.00, 25.75
     lon = np.linspace(lon_min, lon_max, domain_size[0])
     lat = np.linspace(lat_min, lat_max, domain_size[1])
     lon_grid, lat_grid = np.meshgrid(lon, lat)
@@ -43,7 +44,7 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
         year_data = xr.Dataset({
             f'{fname}': (['time', 'channel', 'y', 'x'], np.random.rand(*data_shape).astype(np.float32)),
             'time': datetime_array,
-            'channel': ['a', 'b', 'c', 'd', 'e'],
+            'channel': channel_vars,
             'latitude': (["y", "x"], lat_grid),
             'longitude': (["y", "x"], lon_grid)
         })
