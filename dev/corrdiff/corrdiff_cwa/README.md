@@ -1,9 +1,8 @@
 # Guide on running Corrdiff training and sample generation with CWA dataset
 
-The CWA dataset's size is very large and ready on CMLAB server (**/home/master/13/cwb_s/modulus_datasets_cwa_vv1/cwa_dataset**)
-> **Optional**: To start Docker on the CMLAB server  
-> 1. `setup-docker`  
-> 2. `systemctl --user start docker`
+You can download CWA dataset from [CWA_DATASET](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/modulus/resources/modulus_datasets_cwa)
+
+Noted: the total size is approximately 1.5–2 TB, so be sure you have sufficient storage before starting the download.
 
 ---
 
@@ -46,7 +45,7 @@ docker run \
   --rm -it \
   --name wrf_container \
   -v [/path/to/physicsnemo]:/workspace/physicsnemo \
-  -v /home/master/13/cwb_s/modulus_datasets_cwa_vv1/cwa_dataset:/workspace/cwa_dataset \
+  -v [/path/to/cwa_dataset]:/workspace/cwa_dataset \
   physicsnemo:deploy \
   bash
 ```
