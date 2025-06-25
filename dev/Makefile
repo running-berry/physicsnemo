@@ -5,7 +5,7 @@ rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
 
 pull:
-	git pull origin fix/data-loader
+	git pull origin
 
 make_dummy:
 	cd $(data_dir) && \
@@ -38,7 +38,6 @@ make_cache:
 	$(MAKE) nc-to-npz-t2m
 
 run:
-	$(MAKE) pull
 	$(MAKE) log_dir
 	$(MAKE) make_cache
 	$(MAKE) clear_data	
