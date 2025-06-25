@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-add_dummy_precip.py
-
 Copy a NetCDF file and inject a synthetic 'precipitation' DataArray
 into the existing 'output' group using the netCDF4 low-level API.
 """
