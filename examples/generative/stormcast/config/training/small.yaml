@@ -46,4 +46,4 @@ compile_model: False # use torch.compile to compile model
 
 # Validation options
 # validation_plot_variables: ["t2m"]
-validation_plot_variables: ["qpepre"]
+validation_plot_variables: ["pptn"]

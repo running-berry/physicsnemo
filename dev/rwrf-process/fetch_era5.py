@@ -26,9 +26,6 @@ def save_t2m_numpy(
     # 1) load dataset
     ds = load_era5_interp_nc(date_str, hr_str, variable)
     print("Variables in the dataset:", ds.variables.keys())
-    # for var_name in ds.variables:
-    #     var = ds.variables[var_name]
-    #     print(f"{var_name}: shape {var.shape}")
 
     # 2) grab the raw arrays
     if variable == "t2m":

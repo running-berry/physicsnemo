@@ -222,25 +222,11 @@ def store_rwrf_qpepre_dataset(date_str: str, hr_str: str):
     rwrf_ds.close()
 
     print("Variables in the qpepre dataset:", ds.variables.keys())
-    # for var_name in ds.variables:
-    #     var = ds.variables[var_name]
-    #     print(f"{var_name}: shape {var.shape}")
     ds.close()
 
     rwrf_qpepre_ds = Dataset(new_rwrf_path, mode="r")
 
     print("Variables in the rwrf_qpepre dataset:", rwrf_qpepre_ds.variables.keys())
-    # for var_name in rwrf_qpepre_ds.variables:
-    #     var = rwrf_qpepre_ds.variables[var_name]
-    #     print(
-    #         f"{var_name}: shape {var.shape} dtype {var.dtype} attributes {var.ncattrs()} dimensions {var.dimensions}"
-    #     )
-
-    # for name, dim in rwrf_qpepre_ds.dimensions.items():
-    #     print(f"Dimension {name}: size {len(dim)}")
-
-    # for attr in rwrf_qpepre_ds.ncattrs():
-    #     print(f"Global attribute {attr}: {rwrf_qpepre_ds.getncattr(attr)}")
 
     rwrf_qpepre_ds.close()
     cropped_rwrf_path = crop_rwrf_by_qpepre(new_rwrf_path)
