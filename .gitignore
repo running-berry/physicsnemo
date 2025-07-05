@@ -168,6 +168,7 @@ checkpoints/
 outputs/
 multirun/
 .hydra/
+rundir/
 
 # SLURM
 slurm-*.out

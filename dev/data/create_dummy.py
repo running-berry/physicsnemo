@@ -2,7 +2,7 @@ import os
 import xarray as xr
 import numpy as np
 
-channel_vars = ['t2m']
+channel_vars = ["t2m"]
 num_channel = len(channel_vars)
 domain_size = (16, 16)
 test_datetime_start = "2019/08/03"
@@ -12,41 +12,60 @@ lon_min, lon_max = 121.00, 125.00
 lat_min, lat_max = 21.00, 25.00
 
 for fname in ["DummyHighRes", "DummyLowRes"]:
-    folder_path=f"{fname}/stats"
+    folder_path = f"{fname}/stats"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     else:
         print(f"'{folder_path}' is existed")
-    np.save(f"{folder_path}/means.npy", np.random.rand(num_channel,).astype(np.float32))
-    np.save(f"{folder_path}/stds.npy", np.random.rand(num_channel,).astype(np.float32))
+    np.save(
+        f"{folder_path}/means.npy",
+        np.random.rand(
+            num_channel,
+        ).astype(np.float32),
+    )
+    np.save(
+        f"{folder_path}/stds.npy",
+        np.random.rand(
+            num_channel,
+        ).astype(np.float32),
+    )
 
     lon = np.linspace(lon_min, lon_max, domain_size[0])
     lat = np.linspace(lat_min, lat_max, domain_size[1])
     lon_grid, lat_grid = np.meshgrid(lon, lat)
 
     for year in test_years:
-        base_date = np.datetime64(test_datetime_start.replace('/', '-') + 'T00:00:00')
-        end_date = np.datetime64(test_datetime_last.replace('/', '-')) + np.timedelta64(23, 'h')
-        total_hours = int((end_date - base_date) / np.timedelta64(1, 'h')) + 1
+        base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
+        end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(
+            23, "h"
+        )
+        total_hours = int((end_date - base_date) / np.timedelta64(1, "h")) + 1
         offsets = np.arange(total_hours, dtype=np.int64)
-        datetime_array = base_date + offsets * np.timedelta64(1, 'h')
+        datetime_array = base_date + offsets * np.timedelta64(1, "h")
         chunk_sizes = {
-            'time': 1,
-            'channel': channel_vars,
-            'latitude': len(lat_grid),
-            'longitude': len(lon_grid),
+            "time": 1,
+            "channel": channel_vars,
+            "latitude": len(lat_grid),
+            "longitude": len(lon_grid),
         }
 
         lon_grid, lat_grid = np.meshgrid(lon, lat)
 
-        data_shape = (total_hours, num_channel)+domain_size
-        year_data = xr.Dataset({
-            f'{fname}': (['time', 'channel', 'y', 'x'], np.random.rand(*data_shape).astype(np.float32)),
-            'time': datetime_array,
-            'channel': channel_vars,
-            'latitude': (["y", "x"], lat_grid),
-            'longitude': (["y", "x"], lon_grid)
-        })
+        data_shape = (total_hours, num_channel) + domain_size
+        year_data = xr.Dataset(
+            {
+                f"{fname}": (
+                    ["time", "channel", "y", "x"],
+                    np.random.rand(*data_shape).astype(np.float32),
+                ),
+                "time": datetime_array,
+                "channel": channel_vars,
+                "latitude": (["y", "x"], lat_grid),
+                "longitude": (["y", "x"], lon_grid),
+            }
+        )
 
-        data_enc = {f'{fname}':{'dtype':'float32', 'compressor':None}}
-        year_data.to_zarr(f'{fname}/{year}.zarr', mode='w', consolidated=True, encoding=data_enc)
+        data_enc = {f"{fname}": {"dtype": "float32", "compressor": None}}
+        year_data.to_zarr(
+            f"{fname}/{year}.zarr", mode="w", consolidated=True, encoding=data_enc
+        )
