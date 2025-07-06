@@ -46,7 +46,7 @@ def create_dummy_arr(
         lon_max,
         lat_min,
         lat_max,
-        # domain_size=domain_size,
+        domain_size=domain_size,
     )
 
     Ny_full, Nx_full = lat_grid.shape
@@ -118,7 +118,7 @@ for fname in ["HighRes", "LowRes"]:
                 lon_max,
                 lat_min,
                 lat_max,
-                # domain_size=domain_size,
+                domain_size=domain_size,
             )
             dt_data, lon_grid, lat_grid = u1.interp_to_domain(
                 lon_grid, lat_grid, dt_data, domain_size, method="linear", src=fname
