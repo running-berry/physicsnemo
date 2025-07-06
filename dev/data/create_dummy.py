@@ -32,6 +32,7 @@ for fname in ["DummyHighRes", "DummyLowRes"]:
 
     lon = np.linspace(lon_min, lon_max, domain_size[0])
     lat = np.linspace(lat_min, lat_max, domain_size[1])
+    lat = np.linspace(lat_max, lat_min, domain_size[1])
     lon_grid, lat_grid = np.meshgrid(lon, lat)
 
     for year in test_years:

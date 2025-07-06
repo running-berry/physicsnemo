@@ -11,28 +11,35 @@ var_map = {
     # add any others here...
 }
 
+
 def load_wrf_interp_nc(date_str: str, hr_str: str) -> Dataset:
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
     folder = CONFIG.rwrf
     filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp"
-    ds = Dataset(filepath, mode='r')
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File not found: {filepath}")
+    ds = Dataset(filepath, mode="r")
     return ds
 
-def save_t2m_numpy(date_str: str, hr_str: str, variable: str, out_dir: str = "./cache/rwrf/"):
+
+def save_t2m_numpy(
+    date_str: str, hr_str: str, variable: str, out_dir: str = "./cache/rwrf/"
+):
     # 1) load dataset
     ds = load_wrf_interp_nc(date_str, hr_str)
-    print("Variables in the dataset:", ds.variables.keys())
-    # for var_name in ds.variables:
-    #     var = ds.variables[var_name]
-    #     print(f"{var_name}: shape {var.shape}")
 
     # 2) grab the raw arrays
-    data = ds.variables[var_map.get(variable, variable)][:]
-    lat = ds.variables["XLAT"][:]    # often shape (time, y, x)
-    lon = ds.variables["XLONG"][:]
-    times = ds.variables['Times'][:]    # WRF Times: char array
-
+    data = ds.variables[var_map.get(variable, variable)][
+        :
+    ]  # often (time, grid_row, grid_col) => (1, 450, 450), every grid point represents a value, e.g. data[0, 13, 320] is the value at grid point (13, 320)
+    lat = ds.variables["XLAT"][
+        :
+    ]  # (time, grid_row, grid_col) => (1, 450, 450), every grid point represents a latitude, e.g. lat[0, 13, 320] is the latitude of grid point (13, 320)
+    lon = ds.variables["XLONG"][
+        :
+    ]  # (time, grid_row, grid_col) => (1, 450, 450), every grid point represents a longitude, e.g. lon[0, 13, 320] is the longitude of grid point (13, 320)
+    times = ds.variables["Times"][:]  # WRF Times: char array, shape (1, 19)
 
     ds.close()
 
@@ -42,21 +49,22 @@ def save_t2m_numpy(date_str: str, hr_str: str, variable: str, out_dir: str = "./
     # 4) save as .npz (multiple arrays in one file)
     fn = f"{variable}_" + date_str.replace("/", "") + f"_{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
-    np.savez(
-        out_path,
-        **{variable: data},
-        lat=lat,
-        lon=lon,
-        times=times
-    )
+    np.savez(out_path, **{variable: data}, lat=lat, lon=lon, times=times)
     print(f"Saved arrays to {out_path}")
-    
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Extract RWRF data and save as numpy arrays.')
-    parser.add_argument('--variable', choices=['t2m', 'u10'], required=True,
-                        help='Variable to extract:')
+    parser = argparse.ArgumentParser(
+        description="Extract RWRF data and save as numpy arrays."
+    )
+    parser.add_argument(
+        "--variable", choices=["t2m", "u10"], required=True, help="Variable to extract:"
+    )
     args = parser.parse_args()
-    save_t2m_numpy("2019/08/03", "00", args.variable)
+    for hr in range(0, 24):
+        hr_str = str(hr).zfill(2)
+        print("Processing 2019/08/03", hr_str, args.variable)
+        save_t2m_numpy("2019/08/03", hr_str, args.variable)
 
 
 if __name__ == "__main__":

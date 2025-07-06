@@ -61,18 +61,18 @@ class Dataset(StormCastDataset):
             if params.kept_HighRes_channels == "all"
             else params.kept_HighRes_channels
         )
-        kept_LowRes_idx = [self.LowRes_channels.index(c) for c in self.kept_LowRes_channels]
-        kept_HighRes_idx = [self.HighRes_channels.index(c) for c in self.kept_HighRes_channels]
+        kept_LowRes_idx = [
+            self.LowRes_channels.index(c) for c in self.kept_LowRes_channels
+        ]
+        kept_HighRes_idx = [
+            self.HighRes_channels.index(c) for c in self.kept_HighRes_channels
+        ]
 
         self.means_HighRes = np.load(
-            os.path.join(
-                self.location, "HighRes", "stats", "means.npy"
-            )
+            os.path.join(self.location, "HighRes", "stats", "means.npy")
         )[kept_HighRes_idx, None, None]
         self.stds_HighRes = np.load(
-            os.path.join(
-                self.location, "HighRes", "stats", "stds.npy"
-            )
+            os.path.join(self.location, "HighRes", "stats", "stds.npy")
         )[kept_HighRes_idx, None, None]
         self.means_LowRes = np.load(
             os.path.join(self.location, "LowRes", "stats", "means.npy")
@@ -109,7 +109,8 @@ class Dataset(StormCastDataset):
         )
 
         self.LowRes_paths = sorted(
-            self.LowRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
+            self.LowRes_paths,
+            key=lambda x: int(os.path.basename(x).replace(".zarr", "")),
         )
 
         self.logger0.info(f"list of all LowRes paths: {self.LowRes_paths}")
@@ -137,7 +138,9 @@ class Dataset(StormCastDataset):
                 int(os.path.basename(x).replace(".zarr", "")) for x in self.LowRes_paths
             ]
 
-        self.logger0.info(f"list of all LowRes paths after filtering: {self.LowRes_paths}")
+        self.logger0.info(
+            f"list of all LowRes paths after filtering: {self.LowRes_paths}"
+        )
         self.n_years = len(self.LowRes_paths)
 
         with xr.open_zarr(self.LowRes_paths[0], consolidated=True) as ds:
@@ -158,7 +161,8 @@ class Dataset(StormCastDataset):
         )
         self.logger0.info(f"list of all HighRes paths: {self.HighRes_paths}")
         self.HighRes_paths = sorted(
-            self.HighRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
+            self.HighRes_paths,
+            key=lambda x: int(os.path.basename(x).replace(".zarr", "")),
         )
         if self.train:
             # keep only years specified in the params.train_years list
@@ -169,7 +173,8 @@ class Dataset(StormCastDataset):
                 in self.params.train_years
             ]
             self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+                int(os.path.basename(x).replace(".zarr", ""))
+                for x in self.HighRes_paths
             ]
         else:
             # keep only years specified in the params.valid_years list
@@ -180,15 +185,20 @@ class Dataset(StormCastDataset):
                 in self.params.valid_years
             ]
             self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+                int(os.path.basename(x).replace(".zarr", ""))
+                for x in self.HighRes_paths
             ]
 
-        self.logger0.info(f"list of all HighRes paths after filtering: {self.HighRes_paths}")
+        self.logger0.info(
+            f"list of all HighRes paths after filtering: {self.HighRes_paths}"
+        )
 
-        years = [int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths]
+        years = [
+            int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+        ]
         self.logger0.info(f"years: {years}")
         self.logger0.info(f"self.years: {self.years}")
-        
+
         assert (
             years == self.years
         ), "Number of years for LowRes in %s and HighRes in %s must match" % (
@@ -197,15 +207,26 @@ class Dataset(StormCastDataset):
         )
         with xr.open_zarr(self.HighRes_paths[0], consolidated=True) as ds:
             self.HighRes_channels = list(ds.channel.values)
-            self.HighRes_lat = ds.latitude
-            self.HighRes_lon = ds.longitude
-            
+
+            full_height, full_width = ds.dims["y"], ds.dims["x"]
+            target_height, target_width = self.params.HighRes_img_size
+
+            # Generate arrays of equidistant indices for both dimensions
+            y_indices = np.linspace(0, full_height - 1, target_height, dtype=int)
+            x_indices = np.linspace(0, full_width - 1, target_width, dtype=int)
+
+            self.HighRes_lat = ds.latitude.isel(y=y_indices, x=x_indices)
+            self.HighRes_lon = ds.longitude.isel(y=y_indices, x=x_indices)
+
         self.ds_HighRes = [
-            xr.open_zarr(self.HighRes_paths[i], consolidated=True, mask_and_scale=False)
+            xr.open_zarr(
+                self.HighRes_paths[i], consolidated=True, mask_and_scale=False
+            ).isel(y=y_indices, x=x_indices)
             for i in range(self.n_years)
         ]
 
-
+        self.LowRes_lat = self.HighRes_lat
+        self.LowRes_lon = self.HighRes_lon
 
     def __len__(self):
         return self.n_samples_total
@@ -221,25 +242,25 @@ class Dataset(StormCastDataset):
         """
         Loop through all years and count the total number of samples
         """
-        
+
         first_year = sorted(self.years)[0]
         last_year = sorted(self.years)[-1]
-        
+
         test_datetime_start = self.params.train_dates[0]
         test_datetime_last = self.params.train_dates[1]
 
-        first_sample = datetime.strptime(
-            test_datetime_start, "%Y/%m/%d") \
-                .replace(hour=0, minute=0, second=0)
-        
+        first_sample = datetime.strptime(test_datetime_start, "%Y/%m/%d").replace(
+            hour=0, minute=0, second=0
+        )
+
         self.logger0.info("First sample is {}".format(first_sample))
 
-        last_sample = datetime.strptime(
-            test_datetime_last, "%Y/%m/%d") \
-                .replace(hour=23, minute=0, second=0)
+        last_sample = datetime.strptime(test_datetime_last, "%Y/%m/%d").replace(
+            hour=23, minute=0, second=0
+        )
 
         self.logger0.info("Last sample is {}".format(last_sample))
-        
+
         all_datetimes = [
             first_sample + timedelta(hours=x)
             for x in range(int((last_sample - first_sample).total_seconds() / 3600) + 1)
@@ -251,8 +272,8 @@ class Dataset(StormCastDataset):
             x
             for x in all_datetimes
             if (x not in missing_samples)
-                and (x + timedelta(hours=self.dt) <= last_sample)
-                and ((x + timedelta(hours=self.dt)) not in missing_samples)
+            and (x + timedelta(hours=self.dt) <= last_sample)
+            and ((x + timedelta(hours=self.dt)) not in missing_samples)
         ]
 
         self.logger0.info(
@@ -300,7 +321,12 @@ class Dataset(StormCastDataset):
             self.ds_LowRes, self.LowRes_paths, ts_inp, ts_tar
         )
 
-        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels).LowRes.values
+
+        inp_field = (
+            ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels)
+            .interp(y=self.LowRes_lat, x=self.LowRes_lon)
+            .LowRes.values
+        )
 
         inp = self.normalize_background(inp_field)
         return torch.as_tensor(inp)
@@ -313,8 +339,12 @@ class Dataset(StormCastDataset):
             self.ds_HighRes, self.HighRes_paths, ts_inp, ts_tar
         )
 
-        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_HighRes_channels).HighRes.values
-        tar_field = ds_tar.sel(time=ts_tar, channel=self.kept_HighRes_channels).HighRes.values
+        inp_field = ds_inp.sel(
+            time=ts_inp, channel=self.kept_HighRes_channels
+        ).HighRes.values
+        tar_field = ds_tar.sel(
+            time=ts_tar, channel=self.kept_HighRes_channels
+        ).HighRes.values
 
         inp, tar = self.normalize_state(inp_field), self.normalize_state(tar_field)
 

@@ -3,5 +3,8 @@ data/*
 !data/*.py
 
 logs/
-
 output/
+cache/
+
+*.txt
+*.png

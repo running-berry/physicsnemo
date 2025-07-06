@@ -16,6 +16,10 @@ make_data:
 	cd $(rwrf_dir) && \
 	python create_data.py
 
+make_zarr:
+	cd $(rwrf_dir) && \
+	python create_zarr.py
+
 log_dir:
 	mkdir -p $(log_dir)
 
@@ -35,7 +39,7 @@ clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
 cp_rundir:
-	cp -r $(stormcast_dir)/rundir $(log_dir)/$$(date +%Y%m%d_%H%M)
+	# cp -r $(stormcast_dir)/rundir $(log_dir)/$$(date +%Y%m%d_%H%M)
 	cp -r $(stormcast_dir)/rundir/stormcast-training/0/images $(output_dir)/imgs_$$(date +%Y%m%d_%H%M)
 
 make_cache:
@@ -45,9 +49,11 @@ make_cache:
 run:
 	$(MAKE) pull
 	$(MAKE) log_dir
-	$(MAKE) make_cache
-	$(MAKE) clear_data	
-	$(MAKE) clear_rundir	
-	$(MAKE) make_data
+	# $(MAKE) make_cache
+	$(MAKE) clear_data
+	$(MAKE) clear_rundir
+	# $(MAKE) make_dummy
+	# $(MAKE) make_data
+	$(MAKE) make_zarr
 	$(MAKE) train
-	$(MAKE) cp_rundir		
+	$(MAKE) cp_rundir	

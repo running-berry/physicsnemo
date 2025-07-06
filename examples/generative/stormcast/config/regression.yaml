@@ -19,12 +19,14 @@ defaults:
 
   # Dataset
   - dataset/small
+  # - dataset/dummy
 
   # Model
   - model/stormcast
 
   # Training
   - training/small
+  # - training/dummy
 
   # Sampler
   - sampler/edm_deterministic

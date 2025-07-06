@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Tuple, Optional
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, griddata
 
 
 def load_npz(path: str) -> dict:
@@ -49,6 +49,7 @@ def interp_to_domain(
     data: Optional[np.ndarray],
     domain_size: Tuple[int, int],
     method: str = "linear",
+    src: str = "LowRes",
 ) -> Tuple:
     """
     Upsample (or downsample) a rectilinear grid + optional data array
@@ -93,10 +94,26 @@ def interp_to_domain(
 
     # Helper to build & use interpolator for a 2D slice
     def interp_slice(arr2d):
-        interp = RegularGridInterpolator(
-            (lat1d, lon1d), arr2d, method=method, bounds_error=False, fill_value=None
-        )
-        return interp(pts_new).reshape(Ny, Nx)
+        if src == "LowRes":
+            interp = RegularGridInterpolator(
+                (lat1d, lon1d),
+                arr2d,
+                method=method,
+                bounds_error=False,
+                fill_value=None,
+            )
+            return interp(pts_new).reshape(Ny, Nx)
+        elif src == "HighRes":
+            source_points = np.column_stack((lat_grid.ravel(), lon_grid.ravel()))
+            source_values = arr2d.ravel()
+
+            data_flat = griddata(
+                source_points,
+                source_values,
+                pts_new,
+                method=method,
+            )
+            return data_flat.reshape(Ny, Nx)
 
     # If data is exactly 2D, interpolate directly
     if data.ndim == 2:
@@ -121,7 +138,7 @@ def extract_region(
 
     data = load_npz(path)
     arr = data[var]  # (t,y,x) or (t,lev,y,x)
-    lat = data["lat"]  # maybe (1,Ny,Nx)
+    lat = data["lat"]  # era5: (1, Nlat), rwrf: (1, Nlat, Nlon)
     lon = data["lon"]  # maybe (1,Ny,Nx)
     times = data["times"]
 
@@ -175,10 +192,11 @@ def extract_region(
 
 def main():
     # example usage
-    PATH = "./cache/era5/20200601_00.npz"
+    PATH = "./cache/era5/t2m_20190803_00.npz"
+    # PATH = "./cache/rwrf/t2m_20190803_00.npz"
     VAR = "t2m"
-    LON_MIN, LON_MAX = 121.00, 121.75
-    LAT_MIN, LAT_MAX = 25.00, 25.75
+    LON_MIN, LON_MAX = 121.00, 125.00
+    LAT_MIN, LAT_MAX = 21.00, 25.00
 
     data_sub, lon_grid, lat_grid, times = extract_region(
         PATH,
@@ -187,6 +205,7 @@ def main():
         lon_max=LON_MAX,
         lat_min=LAT_MIN,
         lat_max=LAT_MAX,
+        domain_size=(16, 16),  # specify target domain size if needed
     )
 
     print("lat:\n", lat_grid)
