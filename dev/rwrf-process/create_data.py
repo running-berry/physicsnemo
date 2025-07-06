@@ -7,7 +7,8 @@ import zarr
 channel_vars = ["t2m"]
 num_channel = len(channel_vars)
 # domain_size = (16, 16)
-domain_size = (128, 128)
+# domain_size = (128, 128)
+domain_size = (256, 256)
 test_datetime_start = "2019/08/03"
 test_datetime_last = "2019/08/03"
 test_years = [2019]
