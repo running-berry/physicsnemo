@@ -11,6 +11,36 @@ cache_base = "./cache"
 data_base = "../data"
 
 
+def load_data(data_path):
+    data = np.load(data_path, allow_pickle=True)
+    dt_data = data[channel_vars[0]]  # (t,y,x) or (t,lev,y,x)
+    lat_grid = data["lat"]  # era5: (1, Nlat), rwrf: (1, Nlat, Nlon)
+    lat_grid = lat_grid.squeeze()  # ensure shape is (Nlat,) or (Nlat, Nlon)
+    lon_grid = data["lon"]  # era5: (1, Nlat), rwrf: (1, Nlat, Nlon)
+    lon_grid = lon_grid.squeeze()  # ensure shape is (Nlon,) or (Nlat, Nlon)
+    times = data["times"]
+
+    return dt_data, lon_grid, lat_grid, times
+
+
+def create_dummy_arr(
+    dt,
+    data_path: str,
+    data_var: str,
+):
+    yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
+    fn = f"{data_var}_{yy}{mm}{dd}_{hh}.npz"
+    dt_path = os.path.join(data_path, fn)
+
+    data, lon_grid, lat_grid, times = load_data(dt_path)
+
+    dummy_arr = np.full_like(
+        data, fill_value=0.0, dtype=np.float32
+    )  # future: or use fill_value=np.nan
+
+    return dummy_arr, lon_grid, lat_grid, times
+
+
 for fname in ["HighRes", "LowRes"]:
     folder_path = f"{data_base}/{fname}/stats"
     if not os.path.exists(folder_path):
@@ -35,7 +65,12 @@ for fname in ["HighRes", "LowRes"]:
     offsets = np.arange(total_hours, dtype=np.int64)
     datetime_array = base_date + offsets * np.timedelta64(1, "h")
     print(cache_path)
-
+    # create the dummy data format by the first data
+    dummy_data, lon_grid, lat_grid, times = create_dummy_arr(
+        datetime_array[0],
+        cache_path,
+        channel_vars[0],
+    )
     data_arr = None
     channel_var = channel_vars[0]
 
@@ -46,13 +81,17 @@ for fname in ["HighRes", "LowRes"]:
         dt_path = os.path.join(cache_path, f"{channel_var}_{yy}{mm}{dd}_{hh}.npz")
         print(f"Processing {dt_path}")
 
-        data = np.load(dt_path, allow_pickle=True)
-        dt_data = data[channel_vars[0]]  # (t,y,x) or (t,lev,y,x)
-        lat_grid = data["lat"]  # era5: (1, Nlat), rwrf: (1, Nlat, Nlon)
-        lat_grid = lat_grid.squeeze()  # ensure shape is (Nlat,) or (Nlat, Nlon)
-        lon_grid = data["lon"]  # era5: (1, Nlat), rwrf: (1, Nlat, Nlon)
-        lon_grid = lon_grid.squeeze()  # ensure shape is (Nlon,) or (Nlat, Nlon)
-        times = data["times"]
+        try:
+            dt_data, lon_grid, lat_grid, times = load_data(dt_path)
+
+        except FileNotFoundError:
+            # create dummy data
+            dt_data = dummy_data.copy()
+            print(
+                "File not found, missing data for",
+                f"{yy}-{mm}-{dd} {hh}:00",
+                "using dummy data",
+            )
 
         # concatenate data
         if data_arr is None:

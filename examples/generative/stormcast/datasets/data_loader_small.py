@@ -208,7 +208,7 @@ class Dataset(StormCastDataset):
         with xr.open_zarr(self.HighRes_paths[0], consolidated=True) as ds:
             self.HighRes_channels = list(ds.channel.values)
 
-            full_height, full_width = ds.dims["y"], ds.dims["x"]
+            full_height, full_width = ds.sizes["y"], ds.sizes["x"]
             target_height, target_width = self.params.HighRes_img_size
 
             # Generate arrays of equidistant indices for both dimensions
@@ -320,7 +320,6 @@ class Dataset(StormCastDataset):
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
             self.ds_LowRes, self.LowRes_paths, ts_inp, ts_tar
         )
-
 
         inp_field = (
             ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels)
