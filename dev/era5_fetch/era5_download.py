@@ -5,12 +5,12 @@ from earth2studio.data import CDS
 from datetime import datetime, timedelta
 import time as time_module
 import shutil
-
+import xarray as xr
 
 def era5_download(cfg):
     dataset_root = cfg["dataset_root"]
     dataset_name = cfg["dataset_name"]
-    split = cfg["split"]
+    subdir = cfg["subdir"]
     
     start_time = datetime.fromisoformat(cfg["start_time"])
     end_time = datetime.fromisoformat(cfg["end_time"])
@@ -21,15 +21,17 @@ def era5_download(cfg):
     
     cds = CDS(cache=True, verbose=True)
 
-    # Exclude end_time (standard interval behavior)
-    total_hours = int((end_time - start_time).total_seconds() // 3600)
-    time_range = [start_time + timedelta(hours=i) for i in range(total_hours)]
-
     # Include end_time 
-    # time_range = [start_time + timedelta(hours=i) for i in range(total_hours + 1)]
+    total_hours = int((end_time - start_time).total_seconds() // 3600)
+    time_range = [start_time + timedelta(hours=i) for i in range(total_hours + 1)]
     
+    """
+    If you want to exclude end_time use this:
+    
+    time_range = [start_time + timedelta(hours=i) for i in range(total_hours)]
+    """
 
-    output_dir = os.path.join(dataset_root, dataset_name, split)
+    output_dir = os.path.join(dataset_root, dataset_name, subdir)
     os.makedirs(output_dir, exist_ok=True)
 
     all_data = [] 
@@ -76,14 +78,17 @@ def era5_download(cfg):
                 print(f"Error saving {filepath}: {e}")
                 continue
 
+
+
     if save_stats and all_data:
-        last_data = all_data[-1]
-        mean = last_data.mean().values
-        std = last_data.std().values
-        
+        combined = xr.concat(all_data, dim="time")
+
+        mean = combined.mean().values
+        std = combined.std().values
+
         stats_output_dir = os.path.join(dataset_root, dataset_name, stats_dir)
         os.makedirs(stats_output_dir, exist_ok=True)
-        
+
         np.save(os.path.join(stats_output_dir, "means.npy"), mean)
         np.save(os.path.join(stats_output_dir, "stds.npy"), std)
 

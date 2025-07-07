@@ -1,9 +1,10 @@
 # era.yaml
 dataset_root: "./raw"
 dataset_name: "era5"
-split: "train"
+subdir: "train"
 start_time: "2020-06-01T00:00:00"
-end_time:   "2020-06-01T02:00:00"
+end_time:   "2020-06-01T23:00:00"
+save_stats: false  # or true if want enable statistics generation
 variables:
   - "u10m"      # 10 metre U wind component
   - "v10m"      # 10 metre V wind component
