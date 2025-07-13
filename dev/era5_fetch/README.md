@@ -13,6 +13,10 @@ Follow the instruction in
 https://github.com/ecmwf/cdsapi
 
 to get certification from CDS.
+Go to https://cds.climate.copernicus.eu/how-to-api
+Log in to get your cds api
+vi ~/.cdsapirc
+**paste url and key from 1.Setup the CDS API personal access token to cdsapirc
 
 Once you get the personal token, create a
 .env with
