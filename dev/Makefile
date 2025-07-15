@@ -1,8 +1,12 @@
 # Makefile
-stormcast_dir := ../examples/generative/stormcast/
+stormcast_dir := ../examples/generative/stormcast
 data_dir := ./data
 rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
+# variable := t2m
+# variable := u10
+variable := pptn
+# variable := cropped-qpepre
 
 pull:
 	git pull origin
@@ -35,7 +39,7 @@ clear_rundir:
 
 make_cache:
 	cd $(rwrf_dir) && \
-	$(MAKE) nc-to-npz-t2m
+	$(MAKE) nc-to-npz-$(variable)
 
 run:
 	$(MAKE) log_dir

@@ -163,6 +163,7 @@ nsight-systems*
 build/
 mlruns/
 checkpoints/
+rundir/
 
 # Hydra
 outputs/
