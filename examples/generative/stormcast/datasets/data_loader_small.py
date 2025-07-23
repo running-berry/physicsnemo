@@ -99,22 +99,6 @@ class Dataset(StormCastDataset):
     def get_invariants(self):
         """Return invariants used for training, or None if no invariants are used."""
         return None
-    
-    def _extract_date_key(self, path):
-        """Extract the start and end dates from the zarr filename."""
-
-        # Assumes filename format: exp_<channelvars>_<startdate>-<enddate>.zarr or exp_<channelvars>_<domain>_<startdate>-<enddate>.zarr
-        fname = os.path.basename(path).replace(".zarr", "")
-        pattern = r"^exp_[a-zA-Z0-9\-]+(_[a-zA-Z0-9x]+)?_\d{8}-\d{8}$"  # Matches 'exp_<channelvars>[_<domain>]_<startdate>-<enddate>'
-        assert re.match(
-            pattern, fname
-        ), f"Filename '{fname}' does not match expected format 'exp_<channelvars>[_<domain>]_<startdate>-<enddate>'"
-
-        parts = fname.split("_")
-        # The last part are the dates
-        if len(parts) >= 3:
-            return parts[-1].split("-")
-        return ("", "")
 
     def _get_files_stats(self):
         """
@@ -127,7 +111,7 @@ class Dataset(StormCastDataset):
         )
 
         self.LowRes_paths = sorted(
-            self.LowRes_paths, key=lambda x: self._extract_date_key(x)
+            self.LowRes_paths, key=lambda p: os.path.basename(p).replace(".zarr", "")
         )
 
         self.logger0.info(f"list of all LowRes paths: {self.LowRes_paths}")
@@ -176,7 +160,7 @@ class Dataset(StormCastDataset):
         )
         self.logger0.info(f"list of all HighRes paths: {self.HighRes_paths}")
         self.HighRes_paths = sorted(
-            self.HighRes_paths, key=lambda x: self._extract_date_key(x)
+            self.HighRes_paths, key=lambda p: os.path.basename(p).replace(".zarr", "")
         )
         if self.train:
             # keep only zarr files specified in the params.exp_train_zarrs list
@@ -190,9 +174,6 @@ class Dataset(StormCastDataset):
                 os.path.basename(x).replace(".zarr", "")
                 for x in self.HighRes_paths
             ]
-            self.HighRes_years = [
-                int(self._extract_date_key(x)[0][:4]) for x in self.HighRes_paths
-            ]
         else:
             # keep only zarr files specified in the params.exp_valid_zarrs list
             self.HighRes_paths = [
@@ -205,13 +186,8 @@ class Dataset(StormCastDataset):
                 os.path.basename(x).replace(".zarr", "")
                 for x in self.HighRes_paths
             ]
-            self.HighRes_years = [
-                int(self._extract_date_key(x)[0][:4]) for x in self.HighRes_paths
-            ]
 
         self.logger0.info(f"list of all HighRes paths after filtering: {self.HighRes_paths}")
-        self.HighRes_years = sorted(set(self.HighRes_years))
-        self.logger0.info(f"list of all HighRes years: {self.HighRes_years}")
         
         assert (
             self.LowRes_zarrs == self.HighRes_zarrs
