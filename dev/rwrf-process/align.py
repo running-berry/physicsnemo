@@ -17,17 +17,7 @@ def find_common_boundaries(era5_lat, era5_lon, rwrf_lat, rwrf_lon):
     return lat_min, lat_max, lon_min, lon_max
 
 
-def plot_field(
-    lon,
-    lat,
-    data,
-    time_str,
-    variable,
-    source,
-    boundaries,
-    ax,
-    levels=20
-):
+def plot_field(lon, lat, data, time_str, variable, source, boundaries, ax, levels=20):
     """
     Create a countour plot for u10 or t2m within specified boundaries.
     """
@@ -44,18 +34,27 @@ def plot_field(
         lat_filtered = lat
         lon_filtered = lon
 
-    cmap = "coolwarm" if variable == "t2m" else plt.cm.jet
-    label = "T2 (°C)" if variable == "t2m" else "u10 (m/s)"
     if variable == "t2m":
+        cmap = "coolwarm"
+        label = "T2 (°C)"
         title = f"{source.upper()} 2m Temp at {time_str}"
     elif variable == "u10":
+        cmap = plt.cm.jet
+        label = "u10 (m/s)"
         title = f"{source.upper()} 10m u-component of wind at {time_str}"
+    elif variable == "pptn":
+        cmap = "viridis"
+        label = "pptn (mm)"
+        title = f"{source.upper()} Total Precipitation at {time_str}"
 
-    cs = ax.contourf(lon_filtered, lat_filtered, data_filtered, levels=levels, cmap=cmap)
+    cs = ax.contourf(
+        lon_filtered, lat_filtered, data_filtered, levels=levels, cmap=cmap
+    )
     plt.colorbar(cs, ax=ax, label=label)
     ax.set_title(title)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -63,12 +62,21 @@ def main():
     )
     parser.add_argument("--era5_path", help="Path to ERA5 NPZ file", required=True)
     parser.add_argument("--rwrf_path", help="Path to RWRF NPZ file", required=True)
-    parser.add_argument('--variable', choices=['t2m', 'u10'], required=True,help='Variable to plot')
+    parser.add_argument(
+        "--variable",
+        choices=["t2m", "u10", "pptn"],
+        required=True,
+        help="Variable to plot",
+    )
     args = parser.parse_args()
 
     # Load both datasets
-    era5_u10, era5_lat, era5_lon, era5_times = load_data(args.era5_path, "era5", args.variable)
-    rwrf_u10, rwrf_lat, rwrf_lon, rwrf_times = load_data(args.rwrf_path, "rwrf", args.variable)
+    era5_u10, era5_lat, era5_lon, era5_times = load_data(
+        args.era5_path, "era5", args.variable
+    )
+    rwrf_u10, rwrf_lat, rwrf_lon, rwrf_times = load_data(
+        args.rwrf_path, "rwrf", args.variable
+    )
 
     # Get time strings
     era5_time_str = decode_time(era5_times[0], "era5", args.variable)
@@ -87,16 +95,27 @@ def main():
         era5_lat_grid, era5_lon_grid, rwrf_lat_grid, rwrf_lon_grid
     )
 
-
     # Create side-by-side comparison
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     plot_field(
-        era5_lon_grid, era5_lat_grid, era5_extracted_data, era5_time_str,
-        variable=args.variable, source="era5", boundaries=boundaries, ax=ax1
+        era5_lon_grid,
+        era5_lat_grid,
+        era5_extracted_data,
+        era5_time_str,
+        variable=args.variable,
+        source="era5",
+        boundaries=boundaries,
+        ax=ax1,
     )
     plot_field(
-        rwrf_lon_grid, rwrf_lat_grid, rwrf_extracted_data, rwrf_time_str,
-        variable=args.variable, source="rwrf", boundaries=boundaries, ax=ax2
+        rwrf_lon_grid,
+        rwrf_lat_grid,
+        rwrf_extracted_data,
+        rwrf_time_str,
+        variable=args.variable,
+        source="rwrf",
+        boundaries=boundaries,
+        ax=ax2,
     )
     plt.tight_layout()
     plt.savefig(f"align_{args.variable}.png")
