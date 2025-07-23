@@ -344,8 +344,19 @@ class Dataset(StormCastDataset):
         plus a boolean indicating if they ended up in the same handle.
         """
         ds_handles = []
+
+        # flat list of two strings → single tuple
+        start_s, end_s = self.date_ranges
+        fmt = "%Y/%m/%d"
+        date_ranges = [
+            (
+                datetime.strptime(start_s, fmt).date(),
+                datetime.strptime(end_s, fmt).date(),
+            )
+        ]
+
         for ts in (ts_inp, ts_tar):
-            for idx, (start, end) in enumerate(self.date_ranges):
+            for idx, (start, end) in enumerate(date_ranges):
                 if start <= ts.date() <= end:
                     ds_handles.append(handles[idx])
                     break
