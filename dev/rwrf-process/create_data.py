@@ -8,14 +8,14 @@ import yaml
 with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
-channel_vars = cfg["input_channels"]
+channel_vars = ["t2m"]
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
 test_datetime_last  = cfg["train_dates"][-1]
 cache_base = "./cache"
 data_base = "../data"
-experiment_name = cfg["exp_train_zarrs"]
+experiment_name = cfg["exp_train_zarrs"][0]
 
 
 def create_dummy_arr(
