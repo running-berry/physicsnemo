@@ -23,6 +23,7 @@ from physicsnemo.distributed import DistributedManager
 from datetime import datetime, timedelta
 import dask
 import xarray as xr
+import regex as re
 
 from .dataset import StormCastDataset
 
@@ -47,6 +48,7 @@ class Dataset(StormCastDataset):
         self.location = self.params.location
         self.train = train
         self.path_suffix = "train" if train else "valid"
+        self.date_ranges = params.train_dates if train else params.valid_dates
         self.dt = params.dt
         self.normalize = True
         self._get_files_stats()
@@ -105,40 +107,40 @@ class Dataset(StormCastDataset):
 
         # LowRes parsing
         self.LowRes_paths = glob.glob(
-            os.path.join(self.location, "LowRes", "**", "????.zarr"), recursive=True
+            os.path.join(self.location, "LowRes", "**", "*.zarr"), recursive=True
         )
 
         self.LowRes_paths = sorted(
-            self.LowRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
+            self.LowRes_paths, key=lambda p: os.path.basename(p).replace(".zarr", "")
         )
 
         self.logger0.info(f"list of all LowRes paths: {self.LowRes_paths}")
 
         if self.train:
-            # keep only years specified in the params.train_years list
+            # keep only zarr files specified in the params.exp_train_zarrs list
             self.LowRes_paths = [
                 x
                 for x in self.LowRes_paths
-                if int(os.path.basename(x).replace(".zarr", ""))
-                in self.params.train_years
+                if os.path.basename(x).replace(".zarr", "")
+                in self.params.exp_train_zarrs
             ]
-            self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.LowRes_paths
+            self.LowRes_zarrs = [
+                os.path.basename(x).replace(".zarr", "") for x in self.LowRes_paths
             ]
         else:
-            # keep only years specified in the params.valid_years list
+            # keep only zarr files specified in the params.exp_valid_zarrs list
             self.LowRes_paths = [
                 x
                 for x in self.LowRes_paths
-                if int(os.path.basename(x).replace(".zarr", ""))
-                in self.params.valid_years
+                if os.path.basename(x).replace(".zarr", "")
+                in self.params.exp_valid_zarrs
             ]
-            self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.LowRes_paths
+            self.LowRes_zarrs = [
+                os.path.basename(x).replace(".zarr", "") for x in self.LowRes_paths
             ]
 
         self.logger0.info(f"list of all LowRes paths after filtering: {self.LowRes_paths}")
-        self.n_years = len(self.LowRes_paths)
+        self.n_zarrs = len(self.LowRes_paths)
 
         with xr.open_zarr(self.LowRes_paths[0], consolidated=True) as ds:
             self.LowRes_channels = list(ds.channel.values)
@@ -148,50 +150,48 @@ class Dataset(StormCastDataset):
         self.n_samples_total = self.compute_total_samples()
         self.ds_LowRes = [
             xr.open_zarr(self.LowRes_paths[i], consolidated=True)
-            for i in range(self.n_years)
+            for i in range(self.n_zarrs)
         ]
 
         # HighRes parsing
         self.HighRes_paths = glob.glob(
-            os.path.join(self.location, "HighRes", "**", "????.zarr"),
+            os.path.join(self.location, "HighRes", "**", "*.zarr"),
             recursive=True,
         )
         self.logger0.info(f"list of all HighRes paths: {self.HighRes_paths}")
         self.HighRes_paths = sorted(
-            self.HighRes_paths, key=lambda x: int(os.path.basename(x).replace(".zarr", ""))
+            self.HighRes_paths, key=lambda p: os.path.basename(p).replace(".zarr", "")
         )
         if self.train:
-            # keep only years specified in the params.train_years list
+            # keep only zarr files specified in the params.exp_train_zarrs list
             self.HighRes_paths = [
                 x
                 for x in self.HighRes_paths
-                if int(os.path.basename(x).replace(".zarr", ""))
-                in self.params.train_years
+                if os.path.basename(x).replace(".zarr", "")
+                in self.params.exp_train_zarrs
             ]
-            self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+            self.HighRes_zarrs = [
+                os.path.basename(x).replace(".zarr", "")
+                for x in self.HighRes_paths
             ]
         else:
-            # keep only years specified in the params.valid_years list
+            # keep only zarr files specified in the params.exp_valid_zarrs list
             self.HighRes_paths = [
                 x
                 for x in self.HighRes_paths
-                if int(os.path.basename(x).replace(".zarr", ""))
-                in self.params.valid_years
+                if os.path.basename(x).replace(".zarr", "")
+                in self.params.exp_valid_zarrs
             ]
-            self.years = [
-                int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths
+            self.HighRes_zarrs = [
+                os.path.basename(x).replace(".zarr", "")
+                for x in self.HighRes_paths
             ]
 
         self.logger0.info(f"list of all HighRes paths after filtering: {self.HighRes_paths}")
-
-        years = [int(os.path.basename(x).replace(".zarr", "")) for x in self.HighRes_paths]
-        self.logger0.info(f"years: {years}")
-        self.logger0.info(f"self.years: {self.years}")
         
         assert (
-            years == self.years
-        ), "Number of years for LowRes in %s and HighRes in %s must match" % (
+            self.LowRes_zarrs == self.HighRes_zarrs
+        ), "Number of zarrs for LowRes in %s and HighRes in %s must match" % (
             os.path.join(self.location, "LowRes/*.zarr"),
             os.path.join(self.location, "HighRes/*.zarr"),
         )
@@ -202,7 +202,7 @@ class Dataset(StormCastDataset):
             
         self.ds_HighRes = [
             xr.open_zarr(self.HighRes_paths[i], consolidated=True, mask_and_scale=False)
-            for i in range(self.n_years)
+            for i in range(self.n_zarrs)
         ]
 
 
@@ -221,10 +221,6 @@ class Dataset(StormCastDataset):
         """
         Loop through all years and count the total number of samples
         """
-        
-        first_year = sorted(self.years)[0]
-        last_year = sorted(self.years)[-1]
-        
         test_datetime_start = self.params.train_dates[0]
         test_datetime_last = self.params.train_dates[1]
 
@@ -344,10 +340,27 @@ class Dataset(StormCastDataset):
 
     def _get_ds_handles(self, handles, paths, ts_inp, ts_tar):
         """
-        Return opened dataset handles for the appropriate year, and boolean indicating if they are from the same year
+        Return the two dataset‐handles whose date‐ranges contain ts_inp/ts_tar,
+        plus a boolean indicating if they ended up in the same handle.
         """
         ds_handles = []
-        for year in [ts_inp.year, ts_tar.year]:
-            year_idx = self.years.index(year)
-            ds_handles.append(handles[year_idx])
+
+        # flat list of two strings → single tuple
+        start_s, end_s = self.date_ranges
+        fmt = "%Y/%m/%d"
+        date_ranges = [
+            (
+                datetime.strptime(start_s, fmt).date(),
+                datetime.strptime(end_s, fmt).date(),
+            )
+        ]
+
+        for ts in (ts_inp, ts_tar):
+            for idx, (start, end) in enumerate(date_ranges):
+                if start <= ts.date() <= end:
+                    ds_handles.append(handles[idx])
+                    break
+            else:
+                raise ValueError(f"No dataset covers timestamp {ts!r}")
+        
         return ds_handles[0], ds_handles[1], ds_handles[0] == ds_handles[1]

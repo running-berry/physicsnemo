@@ -168,7 +168,7 @@ class DummyDataset(StormCastDataset):
                 if int(os.path.basename(x).replace(".zarr", ""))
                 in self.params.train_years
             ]
-            self.years = [
+            self.DummyHighRes_years = [
                 int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyHighRes_paths
             ]
         else:
@@ -179,18 +179,17 @@ class DummyDataset(StormCastDataset):
                 if int(os.path.basename(x).replace(".zarr", ""))
                 in self.params.valid_years
             ]
-            self.years = [
+            self.DummyHighRes_years = [
                 int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyHighRes_paths
             ]
 
         self.logger0.info(f"list of all DummyHighRes paths after filtering: {self.DummyHighRes_paths}")
 
-        years = [int(os.path.basename(x).replace(".zarr", "")) for x in self.DummyHighRes_paths]
-        self.logger0.info(f"years: {years}")
-        self.logger0.info(f"self.years: {self.years}")
-        
+        self.logger0.info(f"self.DummyLowRes_years: {self.years}")
+        self.logger0.info(f"self.DummyHighRes_years: {self.DummyHighRes_years}")
+
         assert (
-            years == self.years
+            self.DummyHighRes_years == self.years
         ), "Number of years for DummyLowRes in %s and DummyHighRes in %s must match" % (
             os.path.join(self.location, "DummyLowRes/*.zarr"),
             os.path.join(self.location, "DummyHighRes/*.zarr"),

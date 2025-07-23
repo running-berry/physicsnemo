@@ -3,16 +3,22 @@ import xarray as xr
 import numpy as np
 import util_extract as u1
 import zarr
+import yaml
 
-# channel_vars = ["t2m"]
+
+with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
+    cfg = yaml.safe_load(f)
+
+channel_vars = ["t2m"]
 channel_vars = ["pptn"]
 num_channel = len(channel_vars)
-domain_size = (32, 32)
-test_datetime_start = "2019/08/03"
-test_datetime_last = "2019/08/03"
-test_years = [2019]
+domain_size = tuple(cfg["HighRes_img_size"])
+test_datetime_start = cfg["train_dates"][0]
+test_datetime_last  = cfg["train_dates"][-1]
 cache_base = "./cache"
 data_base = "../data"
+experiment_name = cfg["exp_train_zarrs"][0]
+
 
 
 def create_dummy_arr(
@@ -78,12 +84,9 @@ for fname in ["HighRes", "LowRes"]:
     lon_min, lon_max = 121.00, 121.75
     lat_min, lat_max = 25.00, 25.75
 
-    year = test_years[0]
-    base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
-    end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(
-        23, "h"
-    )
-    total_hours = int((end_date - base_date) / np.timedelta64(1, "h")) + 1
+    base_date = np.datetime64(test_datetime_start.replace('/', '-') + 'T00:00:00')
+    end_date = np.datetime64(test_datetime_last.replace('/', '-')) + np.timedelta64(23, 'h')
+    total_hours = int((end_date - base_date) / np.timedelta64(1, 'h')) + 1
     offsets = np.arange(total_hours, dtype=np.int64)
     datetime_array = base_date + offsets * np.timedelta64(1, "h")
     print(cache_path)
@@ -177,12 +180,14 @@ for fname in ["HighRes", "LowRes"]:
     )
     data_enc = {f"{fname}": {"dtype": "float32", "compressor": None}}
     year_data.to_zarr(
-        f"{data_base}/{fname}/{year}.zarr",
+        f"{data_base}/{fname}/{experiment_name}.zarr",
         mode="w",
         consolidated=True,
         encoding=data_enc,
         zarr_format=2,
     )
-    zarr.consolidate_metadata(f"{data_base}/{fname}/{year}.zarr")
+    zarr.consolidate_metadata(f"{data_base}/{fname}/{experiment_name}.zarr")
 
-    print(f"Data for {year} saved to {data_base}/{fname}/{year}.zarr")
+    print(
+        f"Data for {experiment_name} saved to {data_base}/{fname}/{experiment_name}.zarr"
+    )
