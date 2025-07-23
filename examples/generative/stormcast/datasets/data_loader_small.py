@@ -48,6 +48,7 @@ class Dataset(StormCastDataset):
         self.location = self.params.location
         self.train = train
         self.path_suffix = "train" if train else "valid"
+        self.date_ranges = params.train_dates if train else params.valid_dates
         self.dt = params.dt
         self.normalize = True
         self._get_files_stats()
@@ -142,9 +143,6 @@ class Dataset(StormCastDataset):
             self.LowRes_zarrs = [
                 os.path.basename(x).replace(".zarr", "") for x in self.LowRes_paths
             ]
-            self.years = [
-                int(self._extract_date_key(x)[0][:4]) for x in self.LowRes_paths
-            ]
         else:
             # keep only zarr files specified in the params.exp_valid_zarrs list
             self.LowRes_paths = [
@@ -156,14 +154,9 @@ class Dataset(StormCastDataset):
             self.LowRes_zarrs = [
                 os.path.basename(x).replace(".zarr", "") for x in self.LowRes_paths
             ]
-            self.years = [
-                int(self._extract_date_key(x)[0][:4]) for x in self.LowRes_paths
-            ]
 
         self.logger0.info(f"list of all LowRes paths after filtering: {self.LowRes_paths}")
         self.n_zarrs = len(self.LowRes_paths)
-        self.years = sorted(set(self.years))
-        self.logger0.info(f"list of all LowRes years: {self.years}")
 
         with xr.open_zarr(self.LowRes_paths[0], consolidated=True) as ds:
             self.LowRes_channels = list(ds.channel.values)
@@ -226,12 +219,6 @@ class Dataset(StormCastDataset):
             os.path.join(self.location, "LowRes/*.zarr"),
             os.path.join(self.location, "HighRes/*.zarr"),
         )
-        assert (
-            self.HighRes_years == self.years
-        ), "Number of years for LowRes in %s and HighRes in %s must match" % (
-            os.path.join(self.location, "LowRes/*.zarr"),
-            os.path.join(self.location, "HighRes/*.zarr"),
-        )
         with xr.open_zarr(self.HighRes_paths[0], consolidated=True) as ds:
             self.HighRes_channels = list(ds.channel.values)
             self.HighRes_lat = ds.latitude
@@ -258,10 +245,6 @@ class Dataset(StormCastDataset):
         """
         Loop through all years and count the total number of samples
         """
-        
-        first_year = sorted(self.years)[0]
-        last_year = sorted(self.years)[-1]
-        
         test_datetime_start = self.params.train_dates[0]
         test_datetime_last = self.params.train_dates[1]
 
@@ -381,10 +364,16 @@ class Dataset(StormCastDataset):
 
     def _get_ds_handles(self, handles, paths, ts_inp, ts_tar):
         """
-        Return opened dataset handles for the appropriate year, and boolean indicating if they are from the same year
+        Return the two dataset‐handles whose date‐ranges contain ts_inp/ts_tar,
+        plus a boolean indicating if they ended up in the same handle.
         """
         ds_handles = []
-        for year in [ts_inp.year, ts_tar.year]:
-            year_idx = self.years.index(year)
-            ds_handles.append(handles[year_idx])
+        for ts in (ts_inp, ts_tar):
+            for idx, (start, end) in enumerate(self.date_ranges):
+                if start <= ts.date() <= end:
+                    ds_handles.append(handles[idx])
+                    break
+            else:
+                raise ValueError(f"No dataset covers timestamp {ts!r}")
+        
         return ds_handles[0], ds_handles[1], ds_handles[0] == ds_handles[1]
