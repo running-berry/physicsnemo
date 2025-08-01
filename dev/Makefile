@@ -1,5 +1,5 @@
 # Makefile
-stormcast_dir := ../examples/generative/stormcast
+stormcast_dir := ../examples/weather/stormcast
 data_dir := ./data
 rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
@@ -25,7 +25,7 @@ log_dir:
 train:
 	cd $(stormcast_dir) && \
 	timestamp=$$(date +%Y%m%d_%H%M); \
-	torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py \
+	PYTHONPATH=/workspace torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py \
 	  2>&1 | tee $(log_dir)/train_$${timestamp}.log
 
 clear_data:
