@@ -776,7 +776,7 @@ class TimeSeriesDataModule:
         sampler = None
         if num_shards > 1:
             sampler = DistributedSampler(
-                self.val_dataset,
+                self.test_dataset,
                 num_replicas=num_shards,
                 rank=shard_id,
                 shuffle=False,
@@ -950,7 +950,6 @@ class CoupledTimeSeriesDataModule(TimeSeriesDataModule):
         )
 
     def _get_coupled_vars(self):
-
         coupled_variables = []
         for d in self.couplings:
             coupled_variables = coupled_variables + d["params"]["variables"]

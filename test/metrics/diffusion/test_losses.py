@@ -165,7 +165,6 @@ def test_call_method_edm():
 
 
 def test_call_method_regressionloss():
-
     # With a fake network
 
     def fake_net(input, y_lr, augment_labels=None, force_fp32=False):
@@ -193,7 +192,6 @@ def test_call_method_regressionloss():
 # More realistic test with a UNet model
 @pytest.mark.parametrize("device", ["cuda:0", "cpu"])
 def test_call_method_regressionloss_with_unet(device):
-
     res, inc, outc = 64, 2, 3
     model = UNet(
         img_resolution=res,
@@ -209,9 +207,30 @@ def test_call_method_regressionloss_with_unet(device):
     assert loss_value.shape == img_clean.shape
 
 
+# More realistic test with a UNet model and lead-time conditioning
+@pytest.mark.parametrize("device", ["cuda:0", "cpu"])
+def test_call_method_regressionloss_with_lead_time_unet(device):
+    res, inc, outc = 64, 3, 4
+    N_pos, lead_time_channels = 2, 4
+    model = UNet(
+        img_resolution=res,
+        img_in_channels=inc + N_pos + lead_time_channels,
+        img_out_channels=outc,
+        model_type="SongUNetPosLtEmbd",
+        gridtype="test",
+        lead_time_channels=lead_time_channels,
+        N_grid_channels=N_pos,
+    ).to(device)
+    img_clean = torch.ones([1, outc, res, res]).to(device)
+    img_lr = torch.randn([1, inc, res, res]).to(device)
+    lead_time_label = torch.tensor(8).to(device)
+    loss_func = RegressionLoss()
+    loss_value = loss_func(model, img_clean, img_lr, lead_time_label=lead_time_label)
+    assert isinstance(loss_value, torch.Tensor)
+    assert loss_value.shape == img_clean.shape
+
+
 # RegressionLossCE tests
-
-
 def test_regressionlossce_initialization():
     loss_func = RegressionLossCE()
     assert loss_func.prob_channels == [4, 5, 6, 7, 8]
@@ -401,7 +420,6 @@ def test_residualloss_call_method():
 # More realistic test with a UNet model
 @pytest.mark.parametrize("device", ["cuda:0", "cpu"])
 def test_call_method_residualloss_with_unet(device):
-
     res, inc, outc = 64, 2, 3
     N_pos = 2
     regression_model = UNet(
