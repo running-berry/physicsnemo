@@ -9,7 +9,7 @@ import zarr
 with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
-channel_vars = ["t2m"]
+channel_vars = ["t2m", "u10"]
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
@@ -69,7 +69,7 @@ for fname in ["HighRes", "LowRes"]:
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     else:
-        print(f"'{folder_path}' is existed")
+        print(f"'{folder_path}' exists, skipping stats folder generation.")
 
     # determine data path base
     if fname == "HighRes":
@@ -100,40 +100,50 @@ for fname in ["HighRes", "LowRes"]:
     )
     missing_data = []
     data_arr = None
-    channel_var = channel_vars[0]
-
     for dt in datetime_array:
-        yy, mm, dd, hh = (
-            np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
-        )
-        dt_path = os.path.join(cache_path, f"{channel_var}_{yy}{mm}{dd}_{hh}.npz")
-        print(f"Processing {dt_path}")
-
-        try:
-            dt_data, lon_grid, lat_grid, times = u1.extract_region(
-                dt_path,
-                channel_vars[0],
-                lon_min,
-                lon_max,
-                lat_min,
-                lat_max,
-                domain_size=domain_size,
+        channel_arr = None
+        for var in channel_vars:
+            yy, mm, dd, hh = (
+                np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
             )
-            dt_data, lon_grid, lat_grid = u1.interp_to_domain(
-                lon_grid, lat_grid, dt_data, domain_size, method="linear"
-            )
+            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}_{hh}.npz")
+            print(f"Processing {dt_path}")
 
-        except FileNotFoundError:
-            # create dummy data
-            dt_data = dummy_data.copy()
-            missing_data.append(f"{yy}-{mm}-{dd} {hh}:00")
+            try:
+                dt_data, lon_grid, lat_grid, times = u1.extract_region(
+                    dt_path,
+                    var,
+                    lon_min,
+                    lon_max,
+                    lat_min,
+                    lat_max,
+                    domain_size=domain_size,
+                )  # (1, Ny, Nx)
+                dt_data, lon_grid, lat_grid = u1.interp_to_domain(
+                    lon_grid, lat_grid, dt_data, domain_size, method="linear"
+                )  # (1, Ny, Nx)
 
+            except FileNotFoundError:
+                # create dummy data
+                dt_data = dummy_data.copy()
+                missing_data.append(f"{yy}-{mm}-{dd} {hh}:00")
+
+            # concatenate data
+            if channel_arr is None:  # first iteration only
+                channel_arr = dt_data.copy()
+            else:
+                # concatenate along axis=0 (channel)
+                channel_arr = np.concatenate((channel_arr, dt_data), axis=0)
+
+        if channel_arr.ndim == 3:
+            # make it (time, var, y, x)
+            channel_arr = channel_arr[None, :, :, :]
         # concatenate data
-        if data_arr is None:
-            data_arr = dt_data.copy()
+        if data_arr is None:  # first iteration only
+            data_arr = channel_arr.copy()
         else:
-            # concatenate along axis=0 (time or channel, whichever you're stacking)
-            data_arr = np.concatenate((data_arr, dt_data), axis=0)
+            # concatenate along axis=0 (time)
+            data_arr = np.concatenate((data_arr, channel_arr), axis=0)
 
     # compute mean and std over time, latitude & longitude → leaves (n_chan,)
     # data_arr shape is (n_time, n_chan, ny, nx)
@@ -159,11 +169,6 @@ for fname in ["HighRes", "LowRes"]:
     # save them
     np.save(f"{folder_path}/means.npy", means)
     np.save(f"{folder_path}/stds.npy", stds)
-
-    print(data_arr.shape)
-    if data_arr.ndim == 3:
-        # make it (time, 1, y, x)
-        data_arr = data_arr[:, None, :, :]
 
     data_shape = (total_hours, num_channel) + domain_size
     print(data_arr.shape)

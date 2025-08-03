@@ -20,9 +20,9 @@ def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
     if variable == "t2m":
         filepath = dt.strftime(f"{folder}/t2m_%Y%m%d") + hr_str.zfill(2) + ".nc"
     elif variable == "u10":
-        filepath = dt.strftime(f"{folder}/u10_%Y%m%d_") + hr_str.zfill(2) + ".nc"
+        filepath = dt.strftime(f"{folder}/u10_%Y%m%d") + hr_str.zfill(2) + ".nc"
     elif variable == "pptn":
-        filepath = dt.strftime(f"{folder}/tp_%Y%m%d_") + hr_str.zfill(2) + ".nc"
+        filepath = dt.strftime(f"{folder}/tp_%Y%m%d") + hr_str.zfill(2) + ".nc"
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
     ds = Dataset(filepath, mode="r")
