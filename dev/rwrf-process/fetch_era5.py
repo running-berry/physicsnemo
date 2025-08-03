@@ -24,7 +24,8 @@ def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
     elif variable == "pptn":
         filepath = dt.strftime(f"{folder}/tp_%Y%m%d") + hr_str.zfill(2) + ".nc"
     if not os.path.exists(filepath):
-        raise FileNotFoundError(f"File not found: {filepath}")
+        # raise FileNotFoundError(f"File not found: {filepath}") # use this after all files are downloaded
+        print(f"WARNING: File not found: {filepath}, skipping...")  # use this for now
     ds = Dataset(filepath, mode="r")
 
     return ds
@@ -62,7 +63,6 @@ def save_t2m_numpy(
 
 
 def main():
-    DATE = "2019/08/03"
     parser = argparse.ArgumentParser(
         description="Extract ERA5 data and save as numpy arrays."
     )
@@ -73,12 +73,12 @@ def main():
         help="Variable to extract:",
     )
     args = parser.parse_args()
-    for hr in range(0, 24):
-        hr_str = str(hr).zfill(2)
-        print(
-            f"Transforming ERA5 {DATE.replace('/', '')}{hr_str}.nc {args.variable} to numpy array..."
-        )
-        save_t2m_numpy(DATE, hr_str, args.variable)
+    for date_str in CONFIG.date_strs:
+        for hr_str in CONFIG.hr_strs:
+            print(
+                f"Transforming ERA5 {date_str.replace('/', '')}{hr_str}.nc {args.variable} to numpy array..."
+            )
+            save_t2m_numpy(date_str, hr_str, args.variable)
 
 
 if __name__ == "__main__":

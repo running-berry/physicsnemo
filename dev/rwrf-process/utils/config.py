@@ -7,6 +7,8 @@ class Config:
         self.rwrf = self.dataset_paths["rwrf"]
         self.era5 = self.dataset_paths["era5"]
         self.qpepre = self.dataset_paths["qpepre"]
+        self.date_strs = config_dict["date_strs"]
+        self.hr_strs = config_dict["hr_strs"]
 
 
 # Load once at startup

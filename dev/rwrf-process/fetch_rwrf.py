@@ -32,7 +32,8 @@ def load_wrf_interp_nc(
     else:
         filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp"
     if not os.path.exists(filepath):
-        raise FileNotFoundError(f"File not found: {filepath}")
+        # raise FileNotFoundError(f"File not found: {filepath}") # use this after all files are downloaded
+        print(f"WARNING: File not found: {filepath}, skipping...")  # use this for now
     ds = Dataset(filepath, mode="r")
     return ds
 
@@ -66,7 +67,6 @@ def save_t2m_numpy(
 
 
 def main():
-    DATE = "2019/08/03"
     parser = argparse.ArgumentParser(
         description="Extract RWRF data and save as numpy arrays."
     )
@@ -82,12 +82,12 @@ def main():
         help="Use cropped RWRF data by QPEPRE",
     )
     args = parser.parse_args()
-    for hr in range(0, 24):
-        hr_str = str(hr).zfill(2)
-        print(
-            f"Transforming RWRF {DATE.replace('/', '')}{hr_str}.nc {args.variable} to numpy array..."
-        )
-        save_t2m_numpy(DATE, hr_str, args.variable)
+    for date_str in CONFIG.date_strs:
+        for hr_str in CONFIG.hr_strs:
+            print(
+                f"Transforming RWRF {date_str.replace('/', '')}{hr_str}.nc {args.variable} to numpy array..."
+            )
+            save_t2m_numpy(date_str, hr_str, args.variable)
 
 
 if __name__ == "__main__":
