@@ -18,22 +18,15 @@ def load_data(path, source, variable):
     return var_data, lat, lon, times
 
 
-def decode_time(raw, source, variable):
+def decode_time(raw, source):
     """
     Decode timestamp from array of bytes.
     """
     if source == "era5":
-        if variable == "t2m":
-            # raw may be numpy scalar or bytes
-            try:
-                time_str = str(raw)
-            except Exception:
-                time_str = raw.tobytes().decode("utf-8").strip()
-        elif variable == "u10" or variable == "pptn":
-            from datetime import datetime, timezone
+        from datetime import datetime, timezone
 
-            dt = datetime.fromtimestamp(raw, tz=timezone.utc)
-            time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+        dt = datetime.fromtimestamp(raw, tz=timezone.utc)
+        time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
     else:  # rwrf
         time_str = "".join(s.decode("utf-8") for s in raw).strip()
     return time_str
@@ -45,7 +38,7 @@ def extract_slice(var_data, lat, lon, source, variable):
     """
     if source == "era5":
         if variable == "t2m":
-            data_slice = var_data[0, 0, :, :] - 273.15  # K to C
+            data_slice = var_data[0, :, :] - 273.15  # K to C
         elif variable == "u10":
             data_slice = var_data[0, :, :]
         elif variable == "pptn":

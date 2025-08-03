@@ -3,9 +3,9 @@ stormcast_dir := ../examples/generative/stormcast
 data_dir := ./data
 rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
-# variable := t2m
+variable := t2m
 # variable := u10
-variable := pptn
+# variable := pptn
 # variable := cropped-qpepre
 
 pull:

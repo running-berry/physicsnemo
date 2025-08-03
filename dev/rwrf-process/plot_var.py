@@ -1,6 +1,7 @@
-from utils.data import load_data, decode_time, extract_slice
-import matplotlib.pyplot as plt
 import argparse
+
+import matplotlib.pyplot as plt
+from utils.data import decode_time, extract_slice, load_data
 
 
 def plot_var(lon, lat, field, time_str, source, variable, levels=20, figsize=(8, 6)):
@@ -50,7 +51,7 @@ def main():
 
     data, lat, lon, times = load_data(args.path, args.source, args.variable)
     raw = times[0]
-    time_str = decode_time(raw, args.source, args.variable)
+    time_str = decode_time(raw, args.source)
     extracted_data, lat_grid, lon_grid = extract_slice(
         data, lat, lon, args.source, args.variable
     )

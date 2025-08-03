@@ -1,7 +1,8 @@
-from utils.data import load_data, decode_time, extract_slice
-import numpy as np
-import matplotlib.pyplot as plt
 import argparse
+
+import matplotlib.pyplot as plt
+import numpy as np
+from utils.data import decode_time, extract_slice, load_data
 
 
 def find_common_boundaries(era5_lat, era5_lon, rwrf_lat, rwrf_lon):
@@ -79,8 +80,8 @@ def main():
     )
 
     # Get time strings
-    era5_time_str = decode_time(era5_times[0], "era5", args.variable)
-    rwrf_time_str = decode_time(rwrf_times[0], "rwrf", args.variable)
+    era5_time_str = decode_time(era5_times[0], "era5")
+    rwrf_time_str = decode_time(rwrf_times[0], "rwrf")
 
     # Extract data slices
     era5_extracted_data, era5_lat_grid, era5_lon_grid = extract_slice(

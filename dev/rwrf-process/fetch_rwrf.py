@@ -1,10 +1,11 @@
-from utils.config import CONFIG
-from netCDF4 import Dataset
-from datetime import datetime
-import os
-import numpy as np
 import argparse
+import os
+from datetime import datetime
 from typing import Optional
+
+import numpy as np
+from netCDF4 import Dataset
+from utils.config import CONFIG
 
 var_map = {
     "t2m": "T2",
@@ -30,6 +31,8 @@ def load_wrf_interp_nc(
             filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
     else:
         filepath = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp"
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File not found: {filepath}")
     ds = Dataset(filepath, mode="r")
     return ds
 
@@ -43,7 +46,6 @@ def save_t2m_numpy(
 ):
     # 1) load dataset
     ds = load_wrf_interp_nc(date_str, hr_str, variable, cropped_qpepre)
-    print("Variables in the dataset:", ds.variables.keys())
 
     # 2) grab the raw arrays
     data = ds.variables[var_map.get(variable, variable)][:]
@@ -64,6 +66,7 @@ def save_t2m_numpy(
 
 
 def main():
+    DATE = "2019/08/03"
     parser = argparse.ArgumentParser(
         description="Extract RWRF data and save as numpy arrays."
     )
@@ -79,7 +82,12 @@ def main():
         help="Use cropped RWRF data by QPEPRE",
     )
     args = parser.parse_args()
-    save_t2m_numpy("2019/08/03", "00", args.variable, args.cropped_qpepre)
+    for hr in range(0, 24):
+        hr_str = str(hr).zfill(2)
+        print(
+            f"Transforming RWRF {DATE.replace('/', '')}{hr_str}.nc {args.variable} to numpy array..."
+        )
+        save_t2m_numpy(DATE, hr_str, args.variable)
 
 
 if __name__ == "__main__":

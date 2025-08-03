@@ -1,24 +1,22 @@
 import os
-import xarray as xr
+
 import numpy as np
 import util_extract as u1
-import zarr
+import xarray as xr
 import yaml
-
+import zarr
 
 with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
 channel_vars = ["t2m"]
-channel_vars = ["pptn"]
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
-test_datetime_last  = cfg["train_dates"][-1]
+test_datetime_last = cfg["train_dates"][-1]
 cache_base = "./cache"
 data_base = "../data"
 experiment_name = cfg["exp_train_zarrs"][0]
-
 
 
 def create_dummy_arr(
@@ -76,17 +74,17 @@ for fname in ["HighRes", "LowRes"]:
     # determine data path base
     if fname == "HighRes":
         cache_path = f"{cache_base}/rwrf/"
-        import fetch_rwrf as u2
     elif fname == "LowRes":
         cache_path = f"{cache_base}/era5/"
-        import fetch_era5 as u2
 
-    lon_min, lon_max = 121.00, 121.75
-    lat_min, lat_max = 25.00, 25.75
+    lon_min, lon_max = 121.00, 125.00
+    lat_min, lat_max = 21.00, 25.00
 
-    base_date = np.datetime64(test_datetime_start.replace('/', '-') + 'T00:00:00')
-    end_date = np.datetime64(test_datetime_last.replace('/', '-')) + np.timedelta64(23, 'h')
-    total_hours = int((end_date - base_date) / np.timedelta64(1, 'h')) + 1
+    base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
+    end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(
+        23, "h"
+    )
+    total_hours = int((end_date - base_date) / np.timedelta64(1, "h")) + 1
     offsets = np.arange(total_hours, dtype=np.int64)
     datetime_array = base_date + offsets * np.timedelta64(1, "h")
     print(cache_path)
