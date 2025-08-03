@@ -3,8 +3,8 @@ stormcast_dir := /workspace/examples/generative/stormcast
 data_dir := /workspace/dev/data
 rwrf_dir := /workspace/dev/rwrf-process
 log_dir := /workspace/dev/logs
-variable := t2m u10 pptn  # List of variables to process
-# variable := cropped-qpepre
+variable := t2m u10 cropped-qpepre  # List of variables to process
+# variable := pptn
 
 pull:
 	git pull origin
