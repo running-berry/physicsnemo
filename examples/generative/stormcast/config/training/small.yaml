@@ -45,4 +45,4 @@ fp_optimizations: fp32 # Floating point mode, one of ["fp32", "amp-fp16", "amp-b
 compile_model: False # use torch.compile to compile model
 
 # Validation options
-validation_plot_variables: ["t2m"]
+validation_plot_variables: ["t2m", "u10", "pptn"]

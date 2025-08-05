@@ -20,13 +20,13 @@ name: data_loader_small.Dataset # Dataset class module and name, in any module i
 location: '../../../dev/data' # Path to the dataset
 
 # Domain
-HighRes_img_size: [32, 32] 
+HighRes_img_size: [16, 16] 
 
 # Temporal selection
 dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
-exp_train_zarrs: ["exp_var_1v"] # Zarr files to use for training
+exp_train_zarrs: ["exp_res_16"] # Zarr files to use for training
 train_dates: ['2019/08/03', '2019/08/03'] # Dates to use for training
-exp_valid_zarrs: ["exp_var_1v"] # Zarr files to use for validation
+exp_valid_zarrs: ["exp_res_16"] # Zarr files to use for validation
 valid_dates: ['2019/08/03', '2019/08/03'] # Dates to use for validation
 
 # Variable selection

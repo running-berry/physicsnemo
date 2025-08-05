@@ -9,7 +9,7 @@ import zarr
 with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
-channel_vars = ["t2m"]
+channel_vars = ["t2m", "u10", "pptn"]
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
