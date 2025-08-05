@@ -42,9 +42,18 @@ make_cache:
 	done
 
 run:
+	@echo "=== RUN START: $$(date '+%Y-%m-%d %H:%M:%S') ==="
+	@start_time=$$(date +%s); \
 	$(MAKE) log_dir
 	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
 	$(MAKE) make_data
 	$(MAKE) train
+	end_time=$$(date +%s); \
+	elapsed=$$((end_time - start_time)); \
+	hours=$$((elapsed/3600)); \
+	mins=$$(((elapsed%3600)/60)); \
+	secs=$$((elapsed%60)); \
+	echo "=== RUN END:   $$(date '+%Y-%m-%d %H:%M:%S') ==="; \
+	echo "Total elapsed time: $${hours}h $${mins}m $${secs}s"
