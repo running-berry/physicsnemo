@@ -24,10 +24,10 @@ HighRes_img_size: [32, 32]
 
 # Temporal selection
 dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
-exp_train_zarrs: ["exp_time_2d"] # Zarr files to use for training
-train_dates: ['2019/08/03', '2019/08/04']
-exp_valid_zarrs: ["exp_time_2d"] # Zarr files to use for validation
-valid_dates: ['2019/08/03', '2019/08/04']
+exp_train_zarrs: ["exp_latlon_2"] # Zarr files to use for training
+train_dates: ['2019/08/03', '2019/08/03'] # Dates to use for training
+exp_valid_zarrs: ["exp_latlon_2"] # Zarr files to use for validation
+valid_dates: ['2019/08/03', '2019/08/03'] # Dates to use for validation
 
 # Variable selection
 invariants: ["c"] # Invariant quantitites to include

@@ -77,8 +77,8 @@ for fname in ["HighRes", "LowRes"]:
     elif fname == "LowRes":
         cache_path = f"{cache_base}/era5/"
 
-    lon_min, lon_max = 121.00, 125.00
-    lat_min, lat_max = 21.00, 25.00
+    lon_min, lon_max = 121.00, 123.00
+    lat_min, lat_max = 21.00, 23.00
 
     base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
     end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(
