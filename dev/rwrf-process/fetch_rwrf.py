@@ -79,7 +79,12 @@ def main():
         help="Use cropped RWRF data by QPEPRE",
     )
     args = parser.parse_args()
-    save_t2m_numpy("2019/08/03", "00", args.variable, args.cropped_qpepre)
+    # save_t2m_numpy("2019/08/03", "00", args.variable, args.cropped_qpepre)
+    # for 24 hours in 03 August 2019 and 04 August 2019
+    for hour in range(24):
+        save_t2m_numpy("2019/08/03", str(hour).zfill(2), args.variable, args.cropped_qpepre)
+    for hour in range(24):
+        save_t2m_numpy("2019/08/04", str(hour).zfill(2), args.variable, args.cropped_qpepre)
 
 
 if __name__ == "__main__":
