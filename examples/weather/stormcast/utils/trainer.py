@@ -45,6 +45,21 @@ from torch.nn.utils import clip_grad_norm_
 
 logger = PythonLogger("train")
 
+def print_dataset_info(dataset, name="dataset"):
+    logger0 = dataset.logger0 if hasattr(dataset, "logger0") else print
+    logger0.info(f"--- {name} info ---")
+    logger0.info(f"date_ranges: {dataset.date_ranges}")
+    logger0.info(f"LowRes_zarrs: {getattr(dataset, 'LowRes_zarrs', None)}")
+    logger0.info(f"HighRes_zarrs: {getattr(dataset, 'HighRes_zarrs', None)}")
+    logger0.info(f"LowRes_channels: {getattr(dataset, 'LowRes_channels', None)}")
+    logger0.info(f"HighRes_channels: {getattr(dataset, 'HighRes_channels', None)}")
+    logger0.info(f"n_samples_total: {getattr(dataset, 'n_samples_total', None)}")
+    logger0.info(f"valid_samples (first 5): {getattr(dataset, 'valid_samples', None)[:5]}")
+    logger0.info(f"image_shape: {dataset.image_shape()}")
+    logger0.info(f"background_channels: {dataset.background_channels()}")
+    logger0.info(f"state_channels: {dataset.state_channels()}")
+    logger0.info(f"invariants: {dataset.get_invariants()}")
+    logger0.info(f"-------------------")
 
 def training_loop(cfg):
 
@@ -53,7 +68,7 @@ def training_loop(cfg):
     dist = DistributedManager()
     device = dist.device
     logger0 = RankZeroLoggingWrapper(logger, dist)
-
+   
     # Shorthand for config items
     batch_size = cfg.training.batch_size
     if cfg.training.batch_size_per_gpu == "auto":
@@ -95,10 +110,19 @@ def training_loop(cfg):
     logger0.info("Loading dataset...")
 
     dataset_cls = dataset_classes[cfg.dataset.name]
+    logger0.info(f"Dataset class: {dataset_cls.__name__}")
+    # log dataset type
+    logger0.info(f"Dataset type: {cfg.dataset.name}")
     del cfg.dataset.name
 
+    #log preparing dataset train 
+    logger0.info("Preparing dataset train splits...")
     dataset_train = dataset_cls(cfg.dataset, train=True)
+    logger0.info("Preparing dataset valid splits...")
     dataset_valid = dataset_cls(cfg.dataset, train=False)
+    
+    print_dataset_info(dataset_train, "Train")
+    print_dataset_info(dataset_valid, "Valid")
 
     background_channels = dataset_train.background_channels()
     state_channels = dataset_train.state_channels()
@@ -300,6 +324,7 @@ def training_loop(cfg):
 
         # Perform validation step
         if total_steps % cfg.training.validation_freq == 0:
+            logger0.info(f"Validating at step {total_steps}...")
             valid_start = time.time()
             batch = next(valid_dataset_iterator)
 

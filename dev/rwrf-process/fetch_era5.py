@@ -29,10 +29,10 @@ def save_t2m_numpy(
 
     # 2) grab the raw arrays
     if variable == "t2m":
-        lat = ds.variables["lat"][:]  # often shape (time, y, x)
-        lon = ds.variables["lon"][:]
-        times = ds.variables["time"][:]  # WRF Times: char array
-        data = ds.variables["__xarray_dataarray_variable__"][:]
+        lat = ds.variables["latitude"][:]  # often shape (time, y, x)
+        lon = ds.variables["longitude"][:]
+        times = ds.variables["valid_time"][:]  # WRF Times: char array
+        data = ds.variables["t2m"][:]
     elif variable == "u10":
         lat = ds.variables["latitude"][:]
         lon = ds.variables["longitude"][:]
@@ -66,7 +66,13 @@ def main():
         help="Variable to extract:",
     )
     args = parser.parse_args()
-    save_t2m_numpy("2019/08/03", "00", args.variable)
+    # save_t2m_numpy("2019/08/03", "00", args.variable)
+    # for 24 hours in 03 August 2019
+    for hour in range(24):
+        save_t2m_numpy("2019/08/03", str(hour).zfill(2), args.variable)
+    for hour in range(24):
+        save_t2m_numpy("2019/08/04", str(hour).zfill(2), args.variable)
+        
 
 
 if __name__ == "__main__":

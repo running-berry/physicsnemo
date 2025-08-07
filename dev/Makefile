@@ -3,9 +3,9 @@ stormcast_dir := ../examples/weather/stormcast
 data_dir := ./data
 rwrf_dir := ./rwrf-process
 log_dir := /workspace/dev/logs
-# variable := t2m
+variable := t2m
 # variable := u10
-variable := pptn
+# variable := pptn
 # variable := cropped-qpepre
 
 pull:
@@ -25,7 +25,7 @@ log_dir:
 train:
 	cd $(stormcast_dir) && \
 	timestamp=$$(date +%Y%m%d_%H%M); \
-	PYTHONPATH=/workspace torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py \
+	PYTHONPATH=/workspace/physicsnemo torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py \
 	  2>&1 | tee $(log_dir)/train_$${timestamp}.log
 
 clear_data:
