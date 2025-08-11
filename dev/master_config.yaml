@@ -1,0 +1,227 @@
+# StormCast Runner Configuration
+# This file allows customization of all paths, variables, and training settings
+
+# =============================================================================
+# PATHS CONFIGURATION
+# =============================================================================
+paths:
+  # Main directories
+  stormcast_dir: "../examples/weather/stormcast"
+  data_dir: "./data"
+  rwrf_dir: "./rwrf-process"
+  log_dir: "/workspace/dev/logs"
+  
+  # Workspace paths
+  workspace_root: "/workspace/physicsnemo"
+  pythonpath: "/workspace/physicsnemo"
+
+  # Config paths
+  dataset_config: "/workspace/physicsnemo/examples/weather/stormcast/config/dataset/small.yaml"
+  inference_config: "/workspace/physicsnemo/examples/weather/stormcast/config/inference/stormcast.yaml"
+  hydra_config: "/workspace/physicsnemo/examples/weather/stormcast/config/hydra/default.yaml"
+  master_config: "/workspace/physicsnemo/physicsnemo/dev/master_config.yaml"
+  model_config: "/workspace/physicsnemo/examples/weather/stormcast/config/model/stormcast.yaml"
+  sampler_config: "/workspace/physicsnemo/examples/weather/stormcast/config/sampler/edm_deterministic.yaml"
+  training_config: "/workspace/physicsnemo/examples/weather/stormcast/config/training/small.yaml"
+  diffusion_config: "/workspace/physicsnemo/examples/weather/stormcast/config/diffusion.yaml"
+  regression_config: "/workspace/physicsnemo/examples/weather/stormcast/config/regression.yaml"
+
+# =============================================================================
+# EXPERIMENT CONFIGURATION
+# =============================================================================
+experiment:
+  # Default variable to process
+  variable: "t2m"  # Options: t2m, u10, pptn, cropped-qpepre
+  
+  # Experiment naming
+  experiment_name: null  # Will auto-generate if null
+  regression_experiment_suffix: "regression"  # regression-{variable}
+  diffusion_experiment_suffix: "diffusion"    # diffusion-{variable}
+  inference_experiment_suffix: "inference"    # inference-{variable}
+
+# =============================================================================
+# DATASET CONFIGURATION
+# =============================================================================
+dataset:
+  name: "data_loader_small.Dataset"
+  location: "../../../dev/data"
+  
+  # Domain settings
+  HighRes_img_size: [32, 32]
+  
+  # Temporal settings
+  dt: 1  # Timestep between samples (in multiples of base HRRR 1hr timestep)
+  
+  # Training data
+  exp_train_zarrs: ["train"]
+  train_dates: ['2019/08/03', '2019/08/03']
+  
+  # Validation data  
+  exp_valid_zarrs: ["valid"]
+  valid_dates: ['2019/08/04', '2019/08/04']
+  
+  # Variable selection
+  invariants: ["c"]
+  input_channels: "all"
+  diffusion_channels: "all"
+  kept_LowRes_channels: "all"
+  kept_HighRes_channels: "all"
+
+# =============================================================================
+# MODEL CONFIGURATION
+# =============================================================================
+model:
+  # Model type selection
+  model_name: "regression"  # 'regression', 'diffusion', or custom
+  
+  # Model conditions
+  regression_conditions: ["state", "background", "invariant"]
+  diffusion_conditions: ["state", "regression", "invariant"]
+  
+  # Model hyperparameters
+  spatial_pos_embed: false
+  previous_step_conditioning: true
+  use_regression_net: true
+  P_mean: -1.2
+  attn_resolutions: []
+  
+  # Pretrained weights (will be auto-detected if null)
+  regression_weights: null
+
+# =============================================================================
+# TRAINING CONFIGURATION (from small.yaml)
+# =============================================================================
+training:
+  # General training config items (from small.yaml)
+  outdir: 'rundir'  # Root path under which to save training outputs
+  experiment_name: 'stormcast-training'  # Name for the training experiment
+  run_id: '0'  # Unique ID to use for this training run
+  rundir: "./${training.outdir}/${training.experiment_name}/${training.run_id}"  # Path where experiment outputs will be saved
+  num_data_workers: 4  # Number of dataloader worker threads per proc
+  log_to_wandb: false  # Whether or not to log to Weights & Biases
+  wandb_mode: "online"  # logging mode, "online" or "offline"
+  seed: -1  # Specify a random seed by setting this to an int > 0 (-1 for random)
+  cudnn_benchmark: true  # Enable/disable CuDNN benchmark mode
+  resume_checkpoint: "latest"  # epoch number to continue training from, or "latest"
+  initial_weights: null  # if not null, a .mdlus checkpoint to load weights at start
+  
+  # Logging frequency (from small.yaml)
+  print_progress_freq: 5  # How often to print progress, measured in number of training steps
+  checkpoint_freq: 250  # How often to save the checkpoints, measured in number of training steps
+  validation_freq: 10  # how often to record the validation loss, measured in number of training steps
+  
+  # Optimization hyperparameters (from small.yaml)
+  batch_size: 8  # Total training batch size -- must be >= (and divisible by) number of GPUs
+  batch_size_per_gpu: "auto"  # Batch size on each GPU, set to an int to force smaller local batch
+  lr: 4.0e-4  # Initial learning rate
+  lr_rampup_steps: 1000  # Number of training steps over which to perform linear LR warmup
+  total_train_steps: 500  # Number of total training steps
+  clip_grad_norm: -1  # Threshold for gradient clipping, set to -1 to disable
+  loss: 'regression'  # Loss type; use 'regression' or 'edm' for regression and diffusion
+  fp_optimizations: "fp32"  # Floating point mode: ["fp32", "amp-fp16", "amp-bf16"]
+  compile_model: false  # use torch.compile to compile model
+  
+  # Validation options (from small.yaml)
+  validation_plot_variables: ["t2m"]  # Variables to plot during validation
+  
+  # Model-specific training overrides
+  regression:
+    total_train_steps: 500
+    checkpoint_freq: 250
+    validation_freq: 50
+    loss: "regression"  # Override loss type for regression
+    validation_plot_variables: ["t2m"]
+    
+  diffusion:
+    total_train_steps: 500
+    checkpoint_freq: 250
+    validation_freq: 10
+    loss: "edm"  # Override loss type for diffusion
+    validation_plot_variables: ["t2m", "refc"]
+
+# =============================================================================
+# INFERENCE CONFIGURATION
+# =============================================================================
+inference:
+  # Output settings
+  outdir: "rundir"
+  run_id: 0
+  
+  # Checkpoint paths (auto-detected if null)
+  regression_checkpoint: null
+  diffusion_checkpoint: null
+  
+  # Forecast settings
+  initial_time: "2022-11-04T21:00:00"
+  n_steps: 12  # Number of forecast hours
+  
+  # I/O settings
+  plot_var_state: "refc"
+  plot_var_background: "t2m"
+  output_state_channels: []  # Empty list saves all channels
+  
+  # Variable saving
+  save_vertical_vars: ["u", "v", "t", "q", "z", "p", "w"]
+  save_vertical_levels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "13", "15", "20", "25", "30", "35", "40"]
+  save_horizontal_vars: ["msl", "refc", "u10m", "v10m"]
+
+# =============================================================================
+# TORCHRUN CONFIGURATION
+# =============================================================================
+torchrun:
+  nnodes: 1
+  nproc_per_node: 1
+  standalone: true
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  console_output: true
+  file_output: true
+  timestamp_format: "%Y%m%d_%H%M"
+
+# =============================================================================
+# PIPELINE CONFIGURATION
+# =============================================================================
+pipeline:
+  # Steps to run in full pipeline
+  steps:
+    - "ensure_log_dir"
+    - "make_cache" 
+    - "clear_data"
+    - "clear_rundir"
+    - "make_data"
+    - "train"
+  
+  # Error handling
+  stop_on_error: true
+  cleanup_on_failure: false
+
+# =============================================================================
+# CUSTOM TRAINING PROFILES
+# =============================================================================
+# You can define custom training profiles here
+training_profiles:
+  quick_test:
+    total_train_steps: 50
+    checkpoint_freq: 25
+    validation_freq: 10
+    batch_size: 4
+    
+  production:
+    total_train_steps: 16000
+    checkpoint_freq: 1000
+    validation_freq: 500
+    batch_size: 64
+    lr: 2.0e-4
+    
+  debug:
+    total_train_steps: 10
+    checkpoint_freq: 5
+    validation_freq: 2
+    batch_size: 2
+    print_progress_freq: 1
+    fp_optimizations: "fp32"
+    compile_model: false
