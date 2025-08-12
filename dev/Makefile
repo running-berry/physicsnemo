@@ -1,10 +1,10 @@
 # Makefile
 stormcast_dir := /workspace/examples/generative/stormcast
+root_dir := /workspace
 data_dir := /workspace/dev/data
 rwrf_dir := /workspace/dev/rwrf-process
 log_dir := /workspace/dev/logs
-variable := t2m u10 cropped-qpepre  # List of variables to process
-# variable := pptn
+variable := t2m u10 qpepre  # List of variables to process
 
 pull:
 	git pull origin
@@ -36,10 +36,12 @@ clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
 make_cache:
-	for variable in $(variable); do \
-		cd $(rwrf_dir) && \
-		$(MAKE) nc-to-npz-$$variable; \
-	done
+# 	for variable in $(variable); do \
+# 		cd $(rwrf_dir) && \
+# 		$(MAKE) nc-to-npz-$$variable; \
+# 	done
+	cd $(root_dir) && \
+	python -m dev.nc_to_npz
 
 run:
 	$(MAKE) log_dir
