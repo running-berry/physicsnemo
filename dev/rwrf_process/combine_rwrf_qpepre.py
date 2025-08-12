@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import regex as re
 from netCDF4 import Dataset
+from rwrf_process.utils.config import CONFIG
 from scipy.interpolate import griddata
-from utils.config import CONFIG
 
 
 def get_filename_from_date(date_str: str, hr_str: str) -> str:
@@ -235,6 +235,17 @@ async def process_rwrf_qpepre(date_str, hr_str, semaphore):
         await asyncio.to_thread(store_rwrf_qpepre_dataset, date_str, hr_str)
 
 
+def check_rwrf_qpepre_exists(date_str, hr_str):
+    folder = CONFIG.rwrf
+    dt = datetime.strptime(date_str, "%Y/%m/%d")
+    fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
+    converted_path = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
+    converted_cropped_path = (
+        f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_cropped_qpepre.nc"
+    )
+    return os.path.exists(converted_path) and os.path.exists(converted_cropped_path)
+
+
 async def main():
     max_workers = (
         1  # TODO: Find why can't run with more than 1 worker, will Segmentation Fault
@@ -243,19 +254,8 @@ async def main():
     tasks = []
     for date_str in CONFIG.date_strs:
         for hr_str in CONFIG.hr_strs:
-            folder = CONFIG.rwrf
-            dt = datetime.strptime(date_str, "%Y/%m/%d")
-            fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
-            converted_path = (
-                f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
-            )
-            converted_cropped_path = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_cropped_qpepre.nc"
-            if os.path.exists(converted_path) and os.path.exists(
-                converted_cropped_path
-            ):
-                print(
-                    f"File {converted_path} and {converted_cropped_path} already exists, skipping conversion."
-                )
+            if check_rwrf_qpepre_exists(date_str, hr_str):
+                print("Converted file already exists, skipping conversion.")
                 continue
             print(f"Processing RWRF QPEPRE for {date_str} {hr_str}...")
             tasks.append(process_rwrf_qpepre(date_str, hr_str, semaphore))

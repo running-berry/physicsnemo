@@ -1,7 +1,7 @@
 dataset_paths:
-  rwrf: "../data/rwrf"
-  era5: "../data/era5/train"
-  qpepre: "../data/pptn"
+  rwrf: "/workspace/dev/data/rwrf"
+  era5: "/workspace/dev/data/era5/train"
+  qpepre: "/workspace/dev/data/pptn"
 
 # dates for dataset
 date_strs: ["2019/08/03"]

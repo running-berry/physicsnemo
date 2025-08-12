@@ -1,13 +1,10 @@
-import asyncio
 import logging
 import pathlib
 
-import nest_asyncio
 import netCDF4 as nc
 import numpy as np
 import xarray as xr
 from lexicon import RWRFLexicon
-from tqdm.asyncio import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -142,27 +139,16 @@ class RWRF:
 
     def __call__(self) -> None:
         """Function to get data"""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            nest_asyncio.apply()
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        loop.run_until_complete(self.process_files())
+        self.process_files()
 
     async def process_files(self) -> None:
         """Asynchronously converts all NetCDF files in the folder to NPZ format."""
         nc_files = list(self.nc_folder.rglob("*_cropped_qpepre.nc"))
-        tasks = [self.convert_to_npz(nc_file) for nc_file in nc_files]
+        logger.info("Converting RWRF NetCDF to NPZ")
+        for nc_file in nc_files:
+            self.convert_to_npz(nc_file)
 
-        await tqdm.gather(
-            *tasks,
-            desc="Converting RWRF NetCDF to NPZ",
-            disable=(not self._verbose),
-        )
-
-    async def convert_to_npz(self, nc_path: pathlib.Path) -> None:
+    def convert_to_npz(self, nc_path: pathlib.Path) -> None:
         """Loads a single NetCDF file and creates concurrent tasks to save each
         variable to a separate NPZ file.
 
@@ -176,7 +162,6 @@ class RWRF:
             return
 
         try:
-            tasks = []
             with nc.Dataset(nc_path) as ds:
                 # Extract date string from filename: wrfout_d01_{YYYY}-{MM}-{DD}_{HH}_interp_cropped_qpepre.nc
                 basename = nc_path.stem
@@ -198,17 +183,13 @@ class RWRF:
                         level = int(var[1:])
                         data = ds.variables[rwrf_name][:, PRES_IDX[level], :, :]
                     data = modifier(data)
-                    tasks.append(
-                        self._save_variable_npz(var, date_str, lat, lon, times, data)
-                    )
-
-            await asyncio.gather(*tasks)
+                    self._save_variable_npz(var, date_str, lat, lon, times, data)
 
         except Exception as e:
             logger.error(f"Error processing file {nc_path}: {e}")
             raise e
 
-    async def _save_variable_npz(
+    def _save_variable_npz(
         self,
         variable_id: str,
         date_str: str,

@@ -2,7 +2,7 @@
 stormcast_dir := /workspace/examples/generative/stormcast
 root_dir := /workspace
 data_dir := /workspace/dev/data
-rwrf_dir := /workspace/dev/rwrf-process
+rwrf_dir := /workspace/dev/rwrf_process
 log_dir := /workspace/dev/logs
 variable := t2m u10 qpepre  # List of variables to process
 
