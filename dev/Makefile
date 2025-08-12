@@ -36,12 +36,7 @@ clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
 make_cache:
-# 	for variable in $(variable); do \
-# 		cd $(rwrf_dir) && \
-# 		$(MAKE) nc-to-npz-$$variable; \
-# 	done
-	cd $(root_dir) && \
-	python -m dev.nc_to_npz
+	python nc_to_npz.py
 
 run:
 	$(MAKE) log_dir

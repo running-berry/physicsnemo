@@ -6,9 +6,8 @@ import nest_asyncio
 import netCDF4 as nc
 import numpy as np
 import xarray as xr
+from lexicon import RWRFLexicon
 from tqdm.asyncio import tqdm
-
-from dev.lexicon import RWRFLexicon
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ class RWRF:
     ----------
     nc_folder : str
         The root directory where source NetCDF files are stored.
-        Expected structure: `{nc_folder}/{variable}_{YYYY}{MM}{DD}{HH}.nc`
+        Expected structure: `{nc_folder}/{YYYY}-{MM}-{DD}_{HH}/wrfout_d01_{YYYY}-{MM}-{DD}_{HH}_interp_cropped_qpepre.nc`
     npz_folder : str
         The directory where output NPZ files will be saved. This acts as a cache.
     verbose : bool, optional
