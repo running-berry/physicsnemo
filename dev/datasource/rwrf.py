@@ -141,7 +141,7 @@ class RWRF:
         """Function to get data"""
         self.process_files()
 
-    async def process_files(self) -> None:
+    def process_files(self) -> None:
         """Asynchronously converts all NetCDF files in the folder to NPZ format."""
         nc_files = list(self.nc_folder.rglob("*_cropped_qpepre.nc"))
         logger.info("Converting RWRF NetCDF to NPZ")
