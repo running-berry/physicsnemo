@@ -14,7 +14,6 @@ LEVELS = [
 
 class ERA5Lexicon(metaclass=LexiconType):
     """ERA5 Lexicon
-    ERA5 specified <Variable ID>::<Pressure Level>
 
     Note
     ----

@@ -6,6 +6,7 @@ from rwrf_process.combine_rwrf_qpepre import (
     check_rwrf_qpepre_exists,
     store_rwrf_qpepre_dataset,
 )
+from rwrf_process.utils.config import CONFIG
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -14,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 era5 = ERA5(
-    nc_folder="./data/era5/train",
+    nc_folder=CONFIG.era5,
     npz_folder="./data/cache/era5/train",
     verbose=True,
 )
@@ -22,7 +23,7 @@ era5 = ERA5(
 era5()
 
 # make sure qpepre is appended to rwrf
-pptn_folder = pathlib.Path("./data/pptn")
+pptn_folder = pathlib.Path(CONFIG.qpepre)
 qpepre_files = list(pptn_folder.rglob("*.txt"))
 for file in qpepre_files:
     basename = file.stem
@@ -37,7 +38,7 @@ for file in qpepre_files:
     store_rwrf_qpepre_dataset(date_str, hr_str)
 
 rwrf = RWRF(
-    nc_folder="./data/rwrf",
+    nc_folder=CONFIG.rwrf,
     npz_folder="./data/cache/rwrf/train",
     verbose=True,
 )

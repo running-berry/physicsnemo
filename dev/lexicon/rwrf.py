@@ -148,10 +148,15 @@ class RWRFLexicon(metaclass=LexiconType):
             1000,
         ]
 
-        prs_names = ["umet_p", "vmet_p", "z_p", "tk_p", "QVAPOR_p"]
-        e2s_id = ["u", "v", "z", "t", "q"]
+        prs_names_to_id = {
+            "u": "umet_p",
+            "v": "vmet_p",
+            "z": "z_p",
+            "t": "tk_p",
+            "q": "QVAPOR_p",
+        }
         prs_variables = {}
-        for id, variable in zip(e2s_id, prs_names):
+        for id, variable in prs_names_to_id.items():
             for level in prs_levels:
                 prs_variables[f"{id}{level}"] = f"{variable}"
 
