@@ -35,7 +35,7 @@ class RWRFQPEPREProcessor:
         self.qpepre_src = qpepre_src
         self.rwrf_src = rwrf_src
         self.output_dir = output_dir
-        pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)  # ?
+        pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)  # redundant?
 
     def __call__(self):
         """Interpolates all QPEPRE files in the source directory into corresponding RWRF datasets."""
@@ -69,7 +69,9 @@ class RWRFQPEPREProcessor:
         for date_str in date_strs:
             for hr_str in hr_strs:
                 if self._check_exists(date_str, hr_str):
-                    logger.info("Converted file already exists, skipping conversion.")
+                    logger.info(
+                        f"Converted file already exists for QPEPRE {date_str} {hr_str}, skipping conversion."
+                    )
                     continue
 
                 logger.info(
@@ -342,6 +344,10 @@ class RWRFQPEPREProcessor:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s %(levelname)s %(name)s:%(lineno)d: %(message)s",
+    )
     processor = RWRFQPEPREProcessor(
         qpepre_src=CONFIG.qpepre,
         rwrf_src=CONFIG.rwrf,

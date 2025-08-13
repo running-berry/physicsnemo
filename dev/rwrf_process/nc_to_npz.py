@@ -30,4 +30,4 @@ rwrf = RWRF(
     verbose=True,
 )
 rwrf()
-shutil.rmtree(tmp_folder, ignore_errors=True)
+shutil.rmtree(tmp_folder, ignore_errors=True)  # for temporary files
