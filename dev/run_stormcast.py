@@ -9,6 +9,10 @@ import logging
 import glob
 import re
 import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+from ruamel.yaml.comments import CommentedSeq
+import copy
 from datetime import datetime
 from pathlib import Path
 
@@ -41,6 +45,7 @@ class StormCastRunner:
         self.rwrf_dir = Path(self.config['paths']['rwrf_dir'])
         self.log_dir = Path(self.config['paths']['log_dir'])
         
+        
         # Set up experiment variables
         self.variable = self.config['experiment']['variable']
         self.experiment_name = self.config['experiment']['experiment_name']
@@ -48,7 +53,54 @@ class StormCastRunner:
         print(f"Loaded configuration from: {config_path}")
         print(f"Variable: {self.variable}")
         print(f"StormCast directory: {self.stormcast_dir}")
-        
+
+    def update_yaml_preserve_comments(self, target_path, updates):
+        """
+        Update a YAML file with values from updates dict, preserving comments.
+        """
+        yaml = YAML()
+        yaml.preserve_quotes = True
+
+        self.check_path_exists(target_path)
+        with open(target_path, 'r') as f:
+            config = yaml.load(f)
+
+        for k, v in updates.items():
+            # Force inline style for HighRes_img_size
+            if isinstance(v, list):
+                seq = CommentedSeq(v)
+                seq.fa.set_flow_style()
+                config[k] = seq
+            else:
+                config[k] = v
+            self.logger.info(f"Updated {k} to {v} in {target_path}")
+
+        with open(target_path, 'w') as f:
+            yaml.dump(config, f)
+        return target_path
+    
+    def sync_configs_from_master(self):
+        """
+        Update dataset config from master_config.yaml, preserving comments.
+        """
+        dataset_updates = self.config.get('dataset', {})
+        print("Updating with:", dataset_updates) 
+        self.update_yaml_preserve_comments(self.config['paths']['dataset_config'], dataset_updates)
+
+        self.logger.info(f"Updated dataset config with: {dataset_updates}")
+        # log dataset_config content
+        self.logger.info("testing dataset config content")
+
+        # self.logger.debug(f"Dataset config path: {self.config['paths']['dataset_config']}")
+        try:
+            self.logger.info(f"Reading dataset config from: {self.config['paths']['dataset_config']}")
+            self.check_path_exists(self.config['paths']['dataset_config'])
+            with open(self.config['paths']['dataset_config'], 'r') as f:
+                dataset_config_content = f.read()
+            self.logger.info(f"Dataset config content:\n{dataset_config_content}")
+        except Exception as e:
+            self.logger.info(f"Failed to read dataset config: {e}")
+
     def setup_logging(self):
         """Setup logging configuration"""
         log_level = getattr(logging, self.config['logging']['level'].upper())
@@ -98,7 +150,7 @@ class StormCastRunner:
         if regression_exp_name is None:
             regression_exp_name = self.get_experiment_name('regression')
         
-        checkpoint_dir = Path(self.config['paths']['workspace_root']) / "examples/weather/stormcast/rundir_reg" / regression_exp_name / "0" / "checkpoints_regression"
+        checkpoint_dir = Path(self.config['paths']['workspace_root']) / "examples/weather/stormcast/rundir" / regression_exp_name / "0" / "checkpoints_regression"
         
         if not checkpoint_dir.exists():
             self.logger.error(f"Regression checkpoint directory not found: {checkpoint_dir}")
@@ -245,10 +297,38 @@ class StormCastRunner:
             yaml.safe_dump(config, f)
         return config_path
     
+    def check_path_exists(self, path):
+        """Check if a path exists, raise error if it does not."""
+        if not Path(path).exists():
+            self.logger.error(f"Path does not exist: {path}")
+            raise FileNotFoundError(f"Path does not exist: {path}")
+        self.logger.info(f"Path exists: {path}")
+
+    def update_dataset_config(self):
+        """Update dataset config to use the correct variable and experiment name."""
+
+        config_path = self.config['paths']['dataset_config']
+        self.check_path_exists(config_path)
+
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # update variable
+        config["name"] = self.config['dataset']['name']
+
+        
+        with open(config_path, 'w') as f:
+            yaml.safe_dump(config, f)
+        
+        return config_path
+
     def train(self, model_type="regression", config_name=None, experiment_name=None, profile=None):
         """Run training with logging for regression or diffusion models"""
         self.check_required_paths()
-        
+        self.sync_configs_from_master()
+        self.logger.info(f"configs synced from master")
+        # exit(0)  # Exit early if this is a test run
+
         if config_name is None:
             config_name = model_type
         
@@ -293,7 +373,46 @@ class StormCastRunner:
             
             # configure diffusion-specific parameters
 
-        
+        # Apply training overrides
+        def apply_training_overrides(model_type):
+            """Apply model-specific training overrides to the training config."""
+            overrides = self.config['training'].get(model_type, {})
+            training_config_path = self.config['paths']['training_config']
+            self.logger.info(f"Applying training overrides for {model_type}")
+            self.check_path_exists(training_config_path)
+            yaml = YAML()
+            yaml.preserve_quotes = True
+            with open(training_config_path, 'r') as f:
+                training_config = yaml.load(f)
+            for k, v in overrides.items():
+                training_config[k] = v
+                self.logger.info(f"Applied override: {k} = {v} for {model_type} training")
+            with open(training_config_path, 'w') as f:
+                yaml.dump(training_config, f)
+                self.logger.info(f"Updated training config with overrides for {model_type}")
+                
+        if model_type == "diffusion":
+            apply_training_overrides("diffusion")
+        elif model_type == "regression":
+            apply_training_overrides("regression")
+
+        def update_model_name(model_type):
+            """Update model_name in model config file based on model_type."""
+            model_config_path = self.config['paths']['model_config']
+            self.check_path_exists(model_config_path)
+            yaml = YAML()
+            yaml.preserve_quotes = True
+            with open(model_config_path, 'r') as f:
+                model_config = yaml.load(f)
+            model_config['model_name'] = model_type
+            with open(model_config_path, 'w') as f:
+                yaml.dump(model_config, f)
+            self.logger.info(f"Set model_name to '{model_type}' in {model_config_path}")
+
+        update_model_name(model_type)
+
+
+        # Finalize command
         cmd += f" 2>&1 | tee {log_file}"
         
         self.logger.info(f"Training command: {cmd}")

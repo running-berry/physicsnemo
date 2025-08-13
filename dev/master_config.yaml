@@ -88,6 +88,13 @@ model:
   # Pretrained weights (will be auto-detected if null)
   regression_weights: null
 
+  regression:
+    model_name: "regression"
+
+  diffusion:
+    model_name: "diffusion"
+
+
 # =============================================================================
 # TRAINING CONFIGURATION (from small.yaml)
 # =============================================================================
@@ -126,18 +133,18 @@ training:
   
   # Model-specific training overrides
   regression:
-    total_train_steps: 500
-    checkpoint_freq: 250
-    validation_freq: 50
+    total_train_steps: 20
+    checkpoint_freq: 10
+    validation_freq: 5
     loss: "regression"  # Override loss type for regression
     validation_plot_variables: ["t2m"]
     
   diffusion:
-    total_train_steps: 500
-    checkpoint_freq: 250
-    validation_freq: 10
+    total_train_steps: 20
+    checkpoint_freq: 10
+    validation_freq: 5
     loss: "edm"  # Override loss type for diffusion
-    validation_plot_variables: ["t2m", "refc"]
+    validation_plot_variables: ["t2m"]
 
 # =============================================================================
 # INFERENCE CONFIGURATION
@@ -177,7 +184,7 @@ torchrun:
 # LOGGING CONFIGURATION
 # =============================================================================
 logging:
-  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  level: "DEBUG"  # DEBUG, INFO, WARNING, ERROR
   console_output: true
   file_output: true
   timestamp_format: "%Y%m%d_%H%M"
