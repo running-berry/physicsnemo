@@ -56,6 +56,8 @@ def save_t2m_numpy(
     os.makedirs(out_dir, exist_ok=True)
 
     # 4) save as .npz (multiple arrays in one file)
+    if variable == "pptn":
+        variable = "qpepre"
     fn = f"{variable}_" + date_str.replace("/", "") + f"_{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
     np.savez(out_path, **{variable: data}, lat=lat, lon=lon, times=times)

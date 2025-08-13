@@ -15,7 +15,7 @@ nc-to-npz-u10:
 	python fetch_rwrf.py --variable u10
 	python fetch_era5.py --variable u10
 
-nc-to-npz-pptn:
+nc-to-npz-qpepre:
 	python ./datasource/rwrf_qpepre_processor.py
 	python fetch_rwrf.py --variable pptn
 	python fetch_era5.py --variable pptn
