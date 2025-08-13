@@ -1,11 +1,12 @@
-from utils.config import CONFIG
-import shutil
-from netCDF4 import Dataset
-from datetime import datetime, timedelta
+import asyncio
 import os
+from datetime import datetime, timedelta
+
 import numpy as np
 import regex as re
+from netCDF4 import Dataset
 from scipy.interpolate import griddata
+from utils.config import CONFIG
 
 
 def get_filename_from_date(date_str: str, hr_str: str) -> str:
@@ -133,7 +134,7 @@ def combine_rwrf_qpepre(rwrf: Dataset, qpepre: Dataset, output_path: str):
         target_points = np.column_stack((rwrf_lat2d.ravel(), rwrf_lon2d.ravel()))
 
         interpolated = griddata(
-            points, values, target_points, method="linear", fill_value=np.nan
+            points, values, target_points, method="linear", fill_value=0.0
         )
         interpolated_2d = interpolated.reshape(rwrf_lat2d.shape)
 
@@ -221,20 +222,45 @@ def store_rwrf_qpepre_dataset(date_str: str, hr_str: str):
     combine_rwrf_qpepre(rwrf_ds, ds, new_rwrf_path)
     rwrf_ds.close()
 
-    print("Variables in the qpepre dataset:", ds.variables.keys())
     ds.close()
 
     rwrf_qpepre_ds = Dataset(new_rwrf_path, mode="r")
-
-    print("Variables in the rwrf_qpepre dataset:", rwrf_qpepre_ds.variables.keys())
 
     rwrf_qpepre_ds.close()
     cropped_rwrf_path = crop_rwrf_by_qpepre(new_rwrf_path)
 
 
-def main():
-    store_rwrf_qpepre_dataset("2019/08/03", "00")
+async def process_rwrf_qpepre(date_str, hr_str, semaphore):
+    async with semaphore:
+        await asyncio.to_thread(store_rwrf_qpepre_dataset, date_str, hr_str)
+
+
+async def main():
+    max_workers = (
+        1  # TODO: Find why can't run with more than 1 worker, will Segmentation Fault
+    )
+    semaphore = asyncio.Semaphore(max_workers)
+    tasks = []
+    for date_str in CONFIG.date_strs:
+        for hr_str in CONFIG.hr_strs:
+            folder = CONFIG.rwrf
+            dt = datetime.strptime(date_str, "%Y/%m/%d")
+            fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
+            converted_path = (
+                f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
+            )
+            converted_cropped_path = f"{folder}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_cropped_qpepre.nc"
+            if os.path.exists(converted_path) and os.path.exists(
+                converted_cropped_path
+            ):
+                print(
+                    f"File {converted_path} and {converted_cropped_path} already exists, skipping conversion."
+                )
+                continue
+            print(f"Processing RWRF QPEPRE for {date_str} {hr_str}...")
+            tasks.append(process_rwrf_qpepre(date_str, hr_str, semaphore))
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
