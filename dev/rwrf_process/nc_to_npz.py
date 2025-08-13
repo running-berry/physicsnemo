@@ -1,8 +1,7 @@
 import logging
-import pathlib
+import shutil
 
-from combine_rwrf_qpepre import check_rwrf_qpepre_exists, store_rwrf_qpepre_dataset
-from datasource import ERA5, RWRF
+from datasource import ERA5, RWRF, RWRFQPEPREProcessor
 from utils import CONFIG
 
 logging.basicConfig(
@@ -16,27 +15,19 @@ era5 = ERA5(
     npz_folder="../data/cache/era5/train",
     verbose=True,
 )
-
 era5()
 
-# make sure qpepre is appended to rwrf
-pptn_folder = pathlib.Path(CONFIG.qpepre)
-qpepre_files = list(pptn_folder.rglob("*.txt"))
-for file in qpepre_files:
-    basename = file.stem
-    date = basename.split("_")[1][:-2]
-    date_str = f"{date[:4]}/{date[4:6]}/{date[6:8]}"
-    hr_str = date[-2:]
-    if check_rwrf_qpepre_exists(date_str, hr_str):
-        logger.info(
-            f"RWRF QPEPRE dataset already exists for {date_str} {hr_str}. Skipping."
-        )
-        continue
-    store_rwrf_qpepre_dataset(date_str, hr_str)
+# make sure qpepre is interpolated to rwrf
+tmp_folder = "../data/tmp"
+rwrf_qpepre_processor = RWRFQPEPREProcessor(
+    qpepre_src=CONFIG.qpepre, rwrf_src=CONFIG.rwrf, output_dir=tmp_folder
+)
+rwrf_qpepre_processor()
 
 rwrf = RWRF(
-    nc_folder=CONFIG.rwrf,
+    nc_folder=tmp_folder,
     npz_folder="../data/cache/rwrf/train",
     verbose=True,
 )
 rwrf()
+shutil.rmtree(tmp_folder, ignore_errors=True)
