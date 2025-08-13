@@ -12,7 +12,7 @@ class Config:
 
 
 # Load once at startup
-def load_config(config_path="./rwrf_process/config.yaml"):
+def load_config(config_path="./config.yaml"):
     with open(config_path, "r") as f:
         config_dict = yaml.safe_load(f)
     return Config(config_dict)

@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import regex as re
 from netCDF4 import Dataset
-from rwrf_process.utils.config import CONFIG
 from scipy.interpolate import griddata
+from utils import CONFIG
 
 
 def get_filename_from_date(date_str: str, hr_str: str) -> str:

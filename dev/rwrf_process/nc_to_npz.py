@@ -1,12 +1,9 @@
 import logging
 import pathlib
 
+from combine_rwrf_qpepre import check_rwrf_qpepre_exists, store_rwrf_qpepre_dataset
 from datasource import ERA5, RWRF
-from rwrf_process.combine_rwrf_qpepre import (
-    check_rwrf_qpepre_exists,
-    store_rwrf_qpepre_dataset,
-)
-from rwrf_process.utils.config import CONFIG
+from utils import CONFIG
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -16,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 era5 = ERA5(
     nc_folder=CONFIG.era5,
-    npz_folder="./data/cache/era5/train",
+    npz_folder="../data/cache/era5/train",
     verbose=True,
 )
 
@@ -39,7 +36,7 @@ for file in qpepre_files:
 
 rwrf = RWRF(
     nc_folder=CONFIG.rwrf,
-    npz_folder="./data/cache/rwrf/train",
+    npz_folder="../data/cache/rwrf/train",
     verbose=True,
 )
 rwrf()

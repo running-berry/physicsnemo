@@ -1,9 +1,9 @@
 # Makefile
-stormcast_dir := /workspace/examples/generative/stormcast
-root_dir := /workspace
-data_dir := /workspace/dev/data
-rwrf_dir := /workspace/dev/rwrf_process
-log_dir := /workspace/dev/logs
+stormcast_dir := ../examples/generative/stormcast
+root_dir := ..
+data_dir := ./data
+rwrf_dir := ./rwrf_process
+log_dir := ./logs
 variable := t2m u10 qpepre  # List of variables to process
 
 pull:
@@ -36,6 +36,7 @@ clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
 make_cache:
+	cd $(rwrf_dir) && \
 	python nc_to_npz.py
 
 run:
