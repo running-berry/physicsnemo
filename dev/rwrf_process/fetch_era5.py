@@ -17,12 +17,10 @@ var_map = {
 def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     folder = CONFIG.era5
-    if variable == "t2m":
-        filepath = dt.strftime(f"{folder}/t2m_%Y%m%d") + hr_str.zfill(2) + ".nc"
-    elif variable == "u10":
-        filepath = dt.strftime(f"{folder}/u10_%Y%m%d") + hr_str.zfill(2) + ".nc"
-    elif variable == "pptn":
+    if variable == "pptn":
         filepath = dt.strftime(f"{folder}/tp_%Y%m%d") + hr_str.zfill(2) + ".nc"
+    else:
+        filepath = dt.strftime(f"{folder}/{variable}_%Y%m%d") + hr_str.zfill(2) + ".nc"
     if not os.path.exists(filepath):
         # raise FileNotFoundError(f"File not found: {filepath}") # use this after all files are downloaded
         print(f"WARNING: File not found: {filepath}, skipping...")  # use this for now
@@ -58,7 +56,7 @@ def save_t2m_numpy(
     # 4) save as .npz (multiple arrays in one file)
     if variable == "pptn":
         variable = "qpepre"
-    fn = f"{variable}_" + date_str.replace("/", "") + f"_{hr_str}.npz"
+    fn = f"{variable}_" + date_str.replace("/", "") + f"{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
     np.savez(out_path, **{variable: data}, lat=lat, lon=lon, times=times)
     print(f"Saved arrays to {out_path}")
@@ -70,7 +68,7 @@ def main():
     )
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "pptn"],
+        choices=[var for var in var_map.keys()],
         required=True,
         help="Variable to extract:",
     )

@@ -62,7 +62,7 @@ def save_t2m_numpy(
     # 4) save as .npz (multiple arrays in one file)
     if variable == "pptn":
         variable = "qpepre"
-    fn = f"{variable}_" + date_str.replace("/", "") + f"_{hr_str}.npz"
+    fn = f"{variable}_" + date_str.replace("/", "") + f"{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
     np.savez(out_path, **{variable: data}, lat=lat, lon=lon, times=times)
     print(f"Saved arrays to {out_path}")
@@ -74,7 +74,7 @@ def main():
     )
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "pptn"],
+        choices=[var for var in var_map.keys()],
         required=True,
         help="Variable to extract:",
     )

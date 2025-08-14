@@ -1,5 +1,5 @@
 # Makefile
-stormcast_dir := $(abspath ../examples/generative/stormcast)
+stormcast_dir := $(abspath ../examples/weather/stormcast)
 data_dir := $(abspath ./data)
 rwrf_dir := $(abspath ./rwrf_process)
 log_dir := $(abspath ./logs)
