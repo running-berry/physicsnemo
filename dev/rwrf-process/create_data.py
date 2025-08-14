@@ -6,7 +6,7 @@ import zarr
 import yaml
 
 
-with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
+with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
 channel_vars = ["t2m"]
