@@ -43,7 +43,7 @@ def save_t2m_numpy(
     hr_str: str,
     variable: str,
     cropped_qpepre: bool = False,
-    out_dir: str = "./cache/rwrf/",
+    out_dir: str = "../data/cache/rwrf/train/",
 ):
     # 1) load dataset
     ds = load_wrf_interp_nc(date_str, hr_str, variable, cropped_qpepre)

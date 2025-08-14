@@ -30,7 +30,10 @@ def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
 
 
 def save_t2m_numpy(
-    date_str: str, hr_str: str, variable: str, out_dir: str = "./cache/era5/"
+    date_str: str,
+    hr_str: str,
+    variable: str,
+    out_dir: str = "../data/cache/era5/train/",
 ):
     # 1) load dataset
     ds = load_era5_interp_nc(date_str, hr_str, variable)
