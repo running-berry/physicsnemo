@@ -18,18 +18,18 @@ setup-ci:
 	pre-commit install
 
 black:
-	pre-commit run black -a
+	pre-commit run ruff-format -a
 
 interrogate:
 	pre-commit run interrogate -a
 
 lint:
+	pre-commit run ruff-check -a && \
 	pre-commit run markdownlint -a && \
-	pre-commit run ruff -a && \
 	pre-commit run check-added-large-files -a
 
 license: 
-	pre-commit run license -a
+	python test/ci_tests/header_check.py --all-files
 
 doctest:
 	coverage run \

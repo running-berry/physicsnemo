@@ -1,15 +1,16 @@
 import os
-
+import xarray as xr
 import numpy as np
 import util_extract as u1
-import xarray as xr
-import yaml
 import zarr
+import yaml
 
-with open("../../examples/generative/stormcast/config/dataset/small.yaml", "r") as f:
+
+with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
-channel_vars = ["t2m", "u10", "pptn"]
+channel_vars = ["t2m"]
+channel_vars = ["pptn"]
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
