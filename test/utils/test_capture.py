@@ -29,7 +29,7 @@ from physicsnemo.utils.capture import _StaticCapture
 optimizers = pytest.importorskip("apex.optimizers")
 
 Tensor = torch.Tensor
-logger = logging.getLogger("__name__")
+module_logger = logging.getLogger("__name__")
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ def test_capture_training(
         if optimizers:
             optim = optimizers.FusedAdam(model.parameters(), lr=0.001)
         else:
-            logger.warn("Apex not installed, skipping fused Adam tests")
+            logger.warning("Apex not installed, skipping fused Adam tests")
             return
 
     # Create training step function with optimization wrapper
@@ -152,7 +152,7 @@ def test_capture_training_meta(
         if optimizers:
             optim = optimizers.FusedAdam(model.parameters(), lr=0.001)
         else:
-            logger.warn("Apex not installed, skipping fused Adam tests")
+            logger.warning("Apex not installed, skipping fused Adam tests")
             return
 
     # Test control via meta data

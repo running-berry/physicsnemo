@@ -103,10 +103,14 @@ def loss_fn(
     num = torch.sum(mask * (output - target) ** 2.0, dims)
     if loss_type == "rmse":
         denom = torch.sum(mask * target**2.0, dims)
-    else:
+        loss = torch.mean(torch.sqrt(num / denom))
+    elif loss_type == "mse":
         denom = torch.sum(mask)
+        loss = torch.mean(num / denom)
+    else:
+        raise ValueError(f"Invalid loss type: {loss_type}")
 
-    return torch.mean(num / denom)
+    return loss
 
 
 def loss_fn_surface(
@@ -203,10 +207,10 @@ def integral_loss_fn(
     output, target, area, normals, stream_velocity=None, padded_value=-10
 ):
     drag_loss = drag_loss_fn(
-        output, target, area, normals, stream_velocity, padded_value=-10
+        output, target, area, normals, stream_velocity=stream_velocity, padded_value=-10
     )
     lift_loss = lift_loss_fn(
-        output, target, area, normals, stream_velocity, padded_value=-10
+        output, target, area, normals, stream_velocity=stream_velocity, padded_value=-10
     )
     return lift_loss + drag_loss
 
@@ -265,7 +269,7 @@ def compute_loss_dict(
     integral_scaling_factor: float,
     surf_loss_scaling: float,
     vol_loss_scaling: float,
-) -> Tuple[torch.Tensor, dict]:
+) -> tuple[torch.Tensor, dict]:
     """
     Compute the loss terms in a single function call.
 
@@ -298,7 +302,10 @@ def compute_loss_dict(
         surface_areas = batch_inputs["surface_areas"]
         surface_areas = torch.unsqueeze(surface_areas, -1)
         surface_normals = batch_inputs["surface_normals"]
-        stream_velocity = batch_inputs["stream_velocity"]
+
+        # Needs to be taken from the dataset
+        stream_velocity = batch_inputs["global_params_values"][:, 0, :]
+
         loss_surf = loss_fn_surface(
             prediction_surf,
             target_surf,
@@ -318,10 +325,10 @@ def compute_loss_dict(
             loss_surf = loss_surf * surf_loss_scaling
             loss_surf_area = loss_surf_area * surf_loss_scaling
 
-        total_loss_terms.append(0.5 * loss_surf)
-        loss_dict["loss_surf"] = 0.5 * loss_surf
-        total_loss_terms.append(0.5 * loss_surf_area)
-        loss_dict["loss_surf_area"] = 0.5 * loss_surf_area
+        total_loss_terms.append(loss_surf)
+        loss_dict["loss_surf"] = loss_surf
+        total_loss_terms.append(loss_surf_area)
+        loss_dict["loss_surf_area"] = loss_surf_area
         loss_integral = (
             integral_loss_fn(
                 prediction_surf,
@@ -482,7 +489,9 @@ def main(cfg: DictConfig) -> None:
     gpu_handle = nvmlDeviceGetHandleByIndex(dist.device.index)
 
     compute_scaling_factors(
-        cfg, cfg.data_processor.output_dir, use_cache=cfg.data_processor.use_cache
+        cfg=cfg,
+        input_path=cfg.data.input_dir,
+        use_cache=cfg.data_processor.use_cache,
     )
     model_type = cfg.model.model_type
 
@@ -515,6 +524,16 @@ def main(cfg: DictConfig) -> None:
                 num_surf_vars += 1
     else:
         num_surf_vars = None
+
+    num_global_features = 0
+    global_params_names = list(cfg.variables.global_parameters.keys())
+    for param in global_params_names:
+        if cfg.variables.global_parameters[param].type == "vector":
+            num_global_features += len(cfg.variables.global_parameters[param].reference)
+        elif cfg.variables.global_parameters[param].type == "scalar":
+            num_global_features += 1
+        else:
+            raise ValueError(f"Unknown global parameter type")
 
     vol_save_path = os.path.join(
         "outputs", cfg.project.name, "volume_scaling_factors.npy"
@@ -578,6 +597,7 @@ def main(cfg: DictConfig) -> None:
         input_features=3,
         output_features_vol=num_vol_vars,
         output_features_surf=num_surf_vars,
+        global_features=num_global_features,
         model_parameters=cfg.model,
     ).to(dist.device)
     model = torch.compile(model, disable=True)  # TODO make this configurable
@@ -599,7 +619,7 @@ def main(cfg: DictConfig) -> None:
     # optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=0.001)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[100, 200, 300, 400, 500, 600, 700, 800], gamma=0.5
+        optimizer, milestones=[50, 100, 200, 250, 300, 350, 400, 450], gamma=0.5
     )
 
     # Initialize the scaler for mixed precision
