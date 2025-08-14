@@ -10,8 +10,6 @@ var_map = {
     "t2m": "t2m",
     "u10": "u10",
     "pptn": "tp",
-    "lsm": "lsm",
-    "orog": "orog",
     # add any others here...
 }
 
