@@ -1,12 +1,10 @@
 # Makefile
-stormcast_dir := ../examples/weather/stormcast
-data_dir := ./data
-rwrf_dir := ./rwrf-process
+stormcast_dir := /workspace/examples/weather/stormcast
+data_dir := /workspace/dev/data
+rwrf_dir := /workspace/dev/rwrf-process
 log_dir := /workspace/dev/logs
-# variable := t2m
-# variable := u10
-variable := pptn
-# variable := cropped-qpepre
+variable := t2m u10 cropped-qpepre  # List of variables to process
+# variable := pptn
 
 pull:
 	git pull origin
@@ -38,8 +36,10 @@ clear_rundir:
 	rm -rf $(stormcast_dir)/rundir
 
 make_cache:
-	cd $(rwrf_dir) && \
-	$(MAKE) nc-to-npz-$(variable)
+	for variable in $(variable); do \
+		cd $(rwrf_dir) && \
+		$(MAKE) nc-to-npz-$$variable; \
+	done
 
 run:
 	$(MAKE) log_dir

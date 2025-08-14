@@ -1,20 +1,31 @@
-from utils.config import CONFIG
-from netCDF4 import Dataset
-from datetime import datetime
-import os
-import numpy as np
 import argparse
+import os
+from datetime import datetime
+
+import numpy as np
+from netCDF4 import Dataset
+from utils.config import CONFIG
+
+var_map = {
+    "t2m": "t2m",
+    "u10": "u10",
+    "pptn": "tp",
+    # add any others here...
+}
 
 
 def load_era5_interp_nc(date_str: str, hr_str: str, variable: str) -> Dataset:
     dt = datetime.strptime(date_str, "%Y/%m/%d")
     folder = CONFIG.era5
     if variable == "t2m":
-        filepath = dt.strftime(f"{folder}/t2m_%Y%m%d_") + hr_str.zfill(2) + ".nc"
+        filepath = dt.strftime(f"{folder}/t2m_%Y%m%d") + hr_str.zfill(2) + ".nc"
     elif variable == "u10":
-        filepath = dt.strftime(f"{folder}/u10_%Y%m%d_") + hr_str.zfill(2) + ".nc"
+        filepath = dt.strftime(f"{folder}/u10_%Y%m%d") + hr_str.zfill(2) + ".nc"
     elif variable == "pptn":
-        filepath = dt.strftime(f"{folder}/tp_%Y%m%d_") + hr_str.zfill(2) + ".nc"
+        filepath = dt.strftime(f"{folder}/tp_%Y%m%d") + hr_str.zfill(2) + ".nc"
+    if not os.path.exists(filepath):
+        # raise FileNotFoundError(f"File not found: {filepath}") # use this after all files are downloaded
+        print(f"WARNING: File not found: {filepath}, skipping...")  # use this for now
     ds = Dataset(filepath, mode="r")
 
     return ds
@@ -25,24 +36,20 @@ def save_t2m_numpy(
 ):
     # 1) load dataset
     ds = load_era5_interp_nc(date_str, hr_str, variable)
-    print("Variables in the dataset:", ds.variables.keys())
 
     # 2) grab the raw arrays
-    if variable == "t2m":
-        lat = ds.variables["lat"][:]  # often shape (time, y, x)
-        lon = ds.variables["lon"][:]
-        times = ds.variables["time"][:]  # WRF Times: char array
-        data = ds.variables["__xarray_dataarray_variable__"][:]
-    elif variable == "u10":
-        lat = ds.variables["latitude"][:]
-        lon = ds.variables["longitude"][:]
-        times = ds.variables["valid_time"][:]  # unix format
-        data = ds.variables["u10"][:]  # often shape (time, y, x)
-    elif variable == "pptn":
-        lat = ds.variables["latitude"][:]
-        lon = ds.variables["longitude"][:]
-        times = ds.variables["valid_time"][:]  # unix format
-        data = ds.variables["tp"][:]  # often shape (time, y, x), unit meters
+    for key in ["latitude", "longitude", "valid_time", var_map.get(variable, variable)]:
+        if key not in ds.variables:
+            raise KeyError(
+                f"Key '{key}' not found in dataset variables: {list(ds.variables.keys())}"
+            )
+
+    lat = ds.variables["latitude"][:]  # (721, )
+    lon = ds.variables["longitude"][:]  # (1440, )
+    times = ds.variables["valid_time"][:]  # unix format (1,)
+    data = ds.variables[var_map.get(variable, variable)][
+        :
+    ]  # often shape (1, 721, 1440)
 
     ds.close()
     # 3) ensure output dir
@@ -66,7 +73,12 @@ def main():
         help="Variable to extract:",
     )
     args = parser.parse_args()
-    save_t2m_numpy("2019/08/03", "00", args.variable)
+    for date_str in CONFIG.date_strs:
+        for hr_str in CONFIG.hr_strs:
+            print(
+                f"Transforming ERA5 {date_str.replace('/', '')}{hr_str}.nc {args.variable} to numpy array..."
+            )
+            save_t2m_numpy(date_str, hr_str, args.variable)
 
 
 if __name__ == "__main__":
