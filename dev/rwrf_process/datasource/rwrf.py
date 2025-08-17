@@ -1,9 +1,10 @@
 import logging
 import pathlib
-
+from datetime import datetime
 import netCDF4 as nc
 import numpy as np
 import xarray as xr
+
 from lexicon import RWRFLexicon
 
 logger = logging.getLogger(__name__)
@@ -231,6 +232,39 @@ class RWRF:
             logger.error(f"Failed to save NPZ file {out_path}: {e}")
             raise e
 
+    def _check_exists(self, date_str: str, hr_str: str) -> bool:
+        """Checks if the NPZ file for the given date and hour already exists.
+
+        Parameters
+        ----------
+        date_str : str
+            The date string in the format YYYYMMDD.
+        hr_str : str
+            The hour string in the format HH.
+
+        Returns
+        -------
+        bool
+            True if the NPZ file exists, False otherwise.
+        """
+        missing_vars = []
+        dt = datetime.strptime(date_str, "%Y/%m/%d")
+        date_str = dt.strftime("%Y%m%d")
+        hr_str = hr_str.zfill(2)  # Ensure hour is two digits
+
+        for var in VARIABLES:
+            fn = f"{var}_{date_str}{hr_str}.npz"
+            out_path = self.npz_folder / fn
+            logger.info(f"Checking existence of {out_path}")
+            if not out_path.exists():
+                missing_vars.append(var)
+        if not missing_vars:
+            logger.info(f"All NPZ files exist for {date_str} {hr_str}")
+            return True
+        else:
+            logger.info(f"Missing NPZ files for {date_str} {hr_str}: {missing_vars}")
+            return False
+    
     @property
     def info(self) -> None:
         """Prints info about the data source."""

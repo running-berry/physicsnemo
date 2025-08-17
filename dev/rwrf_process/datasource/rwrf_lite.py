@@ -47,9 +47,9 @@ class RWRFLite:
         """
         for date_str in date_strs:
             for hr_str in hr_strs:
-                if self.rwrf_qpepre_processor._check_exists(date_str, hr_str):
+                if self.rwrf._check_exists(date_str, hr_str):
                     logger.info(
-                        f"Converted file already exists for QPEPRE {date_str} {hr_str}, skipping conversion."
+                        f"Converted npz files already exists for RWRF  {date_str} {hr_str}, skipping conversion."
                     )
                     continue
 
