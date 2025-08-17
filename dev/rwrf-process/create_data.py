@@ -9,8 +9,11 @@ import yaml
 with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
-channel_vars = ["t2m"]
-channel_vars = ["pptn"]
+channel_vars = {
+    "LowRes": ["t2m"],
+    "HighRes": ["t2m", "pptn"],
+    "dummy": "t2m",
+}
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
@@ -93,7 +96,7 @@ for fname in ["HighRes", "LowRes"]:
     dummy_data, dummy_lon_grid, dummy_lat_grid, dummy_times = create_dummy_arr(
         datetime_array[0],
         cache_path,
-        channel_vars[0],
+        channel_vars["dummy"],
         lon_min,
         lon_max,
         lat_min,
@@ -103,7 +106,7 @@ for fname in ["HighRes", "LowRes"]:
     data_arr = None
     for dt in datetime_array:
         channel_arr = None
-        for var in channel_vars:
+        for var in channel_vars[fname]:
             yy, mm, dd, hh = (
                 np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
             )
@@ -177,7 +180,7 @@ for fname in ["HighRes", "LowRes"]:
         {
             f"{fname}": (["time", "channel", "y", "x"], data_arr),
             "time": datetime_array,
-            "channel": channel_vars,
+            "channel": channel_vars[fname],
             "latitude": (["y", "x"], lat_grid),
             "longitude": (["y", "x"], lon_grid),
         }
