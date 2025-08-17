@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Convert GRIB files to NetCDF format
 Handles ERA5 data and maintains proper dimensions and metadata
@@ -13,6 +12,7 @@ import numpy as np
 import xarray as xr
 import pygrib
 from netCDF4 import Dataset, date2num
+import calendar
 
 def grib_to_netcdf_pygrib(grib_file, output_file=None, compression=True):
     """
@@ -53,7 +53,6 @@ def grib_to_netcdf_pygrib(grib_file, output_file=None, compression=True):
         dt = datetime(1970, 1, 1)
     
     # Convert to timestamp
-    import calendar
     timestamp = calendar.timegm(dt.timetuple())
     
     try:
@@ -311,7 +310,28 @@ def convert_directory(input_dir, output_dir=None, pattern="*.grib", method="pygr
     
     print(f"\nConversion complete: {converted} successful, {failed} failed")
 
-def main():
+class GribToNetCDFConverter:
+    """
+    Class to handle GRIB to NetCDF conversion
+    Can be extended for more methods or configurations in the future
+    """
+    
+    def __init__(self, input_path, output_path=None, method='pygrib', compression=True):
+        self.input_path = input_path
+        self.output_path = output_path
+        self.method = method
+        self.compression = compression
+    
+    def convert(self):
+        if os.path.isfile(self.input_path):
+            return grib_to_netcdf_pygrib(self.input_path, self.output_path, self.compression) \
+                if self.method == 'pygrib' else grib_to_netcdf_xarray(self.input_path, self.output_path, self.compression)
+        elif os.path.isdir(self.input_path):
+            return convert_directory(self.input_path, self.output_path, pattern="*.grib", method=self.method, compression=self.compression)
+        else:
+            raise ValueError(f"Invalid input path: {self.input_path}")
+
+def parse_grib2nc_args():
     parser = argparse.ArgumentParser(description='Convert GRIB files to NetCDF format')
     parser.add_argument('input', help='Input GRIB file or directory')
     parser.add_argument('-o', '--output', help='Output NetCDF file or directory')
@@ -323,25 +343,14 @@ def main():
                        help='Disable compression in output NetCDF files')
     parser.add_argument('-v', '--verbose', action='store_true',
                        help='Verbose output')
-    
     args = parser.parse_args()
-    
-    compression = not args.no_compression
-    
-    if os.path.isfile(args.input):
-        # Single file conversion
-        if args.method == 'pygrib':
-            grib_to_netcdf_pygrib(args.input, args.output, compression)
-        else:
-            grib_to_netcdf_xarray(args.input, args.output, compression)
-    
-    elif os.path.isdir(args.input):
-        # Directory conversion
-        convert_directory(args.input, args.output, args.pattern, args.method, compression)
-    
-    else:
-        print(f"Error: '{args.input}' is not a valid file or directory")
-        sys.exit(1)
+    args.compression = not args.no_compression
+    return args
 
+def main():
+    args = parse_grib2nc_args()
+    grib_converter = GribToNetCDFConverter(args.input, args.output, args.method, args.compression)
+    grib_converter.convert()
+    
 if __name__ == "__main__":
     main()
