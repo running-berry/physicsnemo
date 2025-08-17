@@ -146,6 +146,7 @@ class RWRF:
         nc_files = list(self.nc_folder.rglob("*_cropped_qpepre.nc"))
         logger.info("Converting RWRF NetCDF to NPZ")
         for nc_file in nc_files:
+            print(f"Next: {nc_file}")
             self.convert_to_npz(nc_file)
 
     def convert_to_npz(self, nc_path: pathlib.Path) -> None:

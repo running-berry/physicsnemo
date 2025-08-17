@@ -1,7 +1,7 @@
 import logging
 import shutil
 
-from datasource import ERA5, RWRF, RWRFQPEPREProcessor
+from datasource import ERA5, RWRF, RWRFQPEPREProcessor, RWRFLite
 from utils import CONFIG
 
 logging.basicConfig(
@@ -19,15 +19,16 @@ era5()
 
 # make sure qpepre is interpolated to rwrf
 tmp_folder = "../data/tmp"
-rwrf_qpepre_processor = RWRFQPEPREProcessor(
-    qpepre_src=CONFIG.qpepre, rwrf_src=CONFIG.rwrf, output_dir=tmp_folder
-)
-rwrf_qpepre_processor()
 
-rwrf = RWRF(
-    nc_folder=tmp_folder,
+# create new RWRFLite instance for RWRFQPEPRE and RWRF processing
+rwrf_lite = RWRFLite(
+    qpepre_src=CONFIG.qpepre,
+    rwrf_src=CONFIG.rwrf,
+    tmp_src=tmp_folder,
     npz_folder="../data/cache/rwrf/train",
     verbose=True,
 )
-rwrf()
-shutil.rmtree(tmp_folder, ignore_errors=True)  # for temporary files
+
+rwrf_lite() #this will process rwrf nc files, convert them to npz format and delete the tmp files one hour at a time
+
+shutil.rmtree(tmp_folder)  # for temporary files
