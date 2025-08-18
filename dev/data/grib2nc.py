@@ -13,6 +13,14 @@ import xarray as xr
 import pygrib
 from netCDF4 import Dataset, date2num
 import calendar
+import warnings
+
+var_standard_name = {
+    't2m': 'air_temperature',
+    'u10': 'eastward_wind',
+    'v10': 'northward_wind',
+    'msl': 'air_pressure_at_mean_sea_level'
+}
 
 def grib_to_netcdf_pygrib(grib_file, output_file=None, compression=True):
     """
@@ -322,9 +330,244 @@ class GribToNetCDFConverter:
         self.method = method
         self.compression = compression
     
+    def grib_to_netcdf_pygrib(self, grib_path, nc_path, compression=True):
+        """
+        Convert GRIB file to NetCDF using pygrib
+        
+        Args:
+            grib_file (str): Path to input GRIB file
+            output_file (str): Path to output NetCDF file (optional)
+            compression (bool): Whether to compress the output file
+        """  
+        if not nc_path:
+            base_name = os.path.splitext(grib_path)[0]
+            nc_path = f"{base_name}.nc"
+        
+        self.output_file = nc_path
+        print(f"Converting {grib_path} to {nc_path} using pygrib")
+        
+        filename, var_name, dt, timestamp= self.get_info_from_filename(grib_path)
+        #try:
+            # Open GRIB file
+        with pygrib.open(grib_path) as grbs:
+            # Analyze all messages to get dimensions and variables
+            variables_data = {} 
+            for i, grb in enumerate(grbs, 1):
+                print(f"Processing message {i}: {grb}")
+                # Store dimensions and global attributes from fist message
+                if i == 1:
+                    lats, lons, data, units, long_name = \
+                        self.get_info_from_grib(grb, var_name)
+
+                    dimensions = self._get_dimensions(
+                        grb, 
+                        lats,
+                        lons, 
+                        timestamp
+                    )
+                    try:
+                        global_attrs = self._get_global_attributes(
+                            grb,
+                            dt,
+                            grib_path
+                        )
+                    except:
+                        pass
+            
+                # Store variable data                        
+                variables_data, clean_var_name = self._get_variables(
+                    grb,
+                    variables_data,
+                    var_name, 
+                    data,
+                    units,
+                    long_name,
+                    timestamp
+                )
+        
+        # Create NetCDF file
+        print(f"Writing NetCDF file: {nc_path}")
+        print(f"Variable: {clean_var_name}, Time: {dt}") 
+
+        with Dataset(self.output_file, 'w', format='NETCDF4') as nc:
+            self._store_dimensions(nc, dimensions)
+            self._store_coordinates(nc, dimensions)
+            self._store_variables(nc, variables_data, clean_var_name)
+            self._store_global_attributes(nc, global_attrs)
+
+        print(f"Successfully converted {grib_path} to {nc_path}")
+        return nc_path
+
+        #except Exception as e:
+        #    print(f"Error converting {grib_path}: {e}")
+        #    return None
+
+    def get_info_from_filename(self, grib_fn):
+        """
+        Extract variable name and time from GRIB filename
+        
+        Args:
+            grib_file (str): Path to input GRIB file
+            
+        Returns:
+            tuple: (filename, datetime object, timestamp)
+        """
+        # Extract variable name and time from filename
+        filename = os.path.basename(grib_fn)
+        base_name = os.path.splitext(filename)[0]
+        
+        # Parse filename format: variable_YYYYMMDDHH.grib
+        try:
+            parts = base_name.split('_')
+            if len(parts) >= 2:
+                var_name = parts[0]
+                datetime_str = parts[1]
+                
+                # Parse datetime: YYYYMMDDHH
+                if len(datetime_str) == 10:  # YYYYMMDDHH
+                    dt = datetime.strptime(datetime_str, "%Y%m%d%H")
+                else:
+                    raise ValueError("Invalid datetime format")
+            else:
+                raise ValueError("Invalid filename format")
+        except:
+            print(f"Warning: Could not parse filename {filename}, using defaults")
+            var_name = "unknown_var"
+            dt = datetime(1970, 1, 1)
+        
+        # Convert to timestamp
+        timestamp = calendar.timegm(dt.timetuple())
+        
+        return filename, dt, var_name, timestamp
+    
+    def get_info_from_grib(self, grb, var_name):
+        var_info = {}
+        # Get grid data
+        lats, lons = grb.latlons()
+        data = grb.values
+        
+        # Get units and long name from GRIB, but use filename for variable name
+        try:
+            units = grb.get('units', '')
+            long_name = grb.get('name', var_name)
+        except:
+            units = ''
+            long_name = var_name
+
+        return lats, lons, data, units, long_name
+    
+    def _get_variables(self, grb, variables_data, var_name, data, units, long_name, timestamp): 
+        # Use variable name from filename
+        clean_var_name = var_name.replace(' ', '_').replace('-', '_')
+        if clean_var_name[0].isdigit():
+            clean_var_name = f"var_{clean_var_name}"
+        
+        # Store variable data
+        variables_data[clean_var_name] = {
+                'data': data,
+                'units': units,
+                'long_name': long_name,
+                'dimensions': ('latitude', 'longitude'),
+                'time': timestamp
+            }
+
+        return variables_data, clean_var_name
+
+    def _get_dimensions(self, grb, lats, lons, timestamp):
+        dimensions = {}
+        # Store dimensions (assuming all messages have same grid)
+        if 'latitude' not in dimensions:
+            dimensions['latitude'] = lats[:, 0]  # First column
+            dimensions['longitude'] = lons[0, :]  # First row                
+            dimensions['valid_time'] = [timestamp]
+        
+        return dimensions
+
+    def _get_global_attributes(self, grb, dt, grib_file):
+        global_attrs = {}
+        global_attrs.update({
+            'source': 'ERA5',
+            'institution': 'ECMWF',
+            'created': datetime.now().isoformat(),
+            'original_file': os.path.basename(grib_file),
+            'grid_type': grb.get('gridType', 'unknown'),
+            'data_date': dt.strftime("%Y-%m-%d"),
+            'data_time': dt.strftime("%H:%M:%S")
+        })
+
+        return global_attrs
+    
+    def _store_dimensions(self, nc, dimensions):
+        nc.createDimension('valid_time', len(dimensions['valid_time']))
+        nc.createDimension('latitude', len(dimensions['latitude']))
+        nc.createDimension('longitude', len(dimensions['longitude']))
+        
+        # Add scalar dimension for ensemble member (like in your ERA5 data)
+        nc.createDimension('number', 1)
+
+    def _store_coordinates(self, nc, dimensions):
+        # Time
+        time_var = nc.createVariable('valid_time', 'i8', ('valid_time',), 
+                                   zlib=self.compression)
+        time_var[:] = dimensions['valid_time']
+        time_var.units = 'seconds since 1970-01-01'
+        time_var.long_name = 'time'
+        time_var.standard_name = 'time'
+        
+        # Latitude
+        lat_var = nc.createVariable('latitude', 'f8', ('latitude',), 
+                                  zlib=self.compression)
+        lat_var[:] = dimensions['latitude']
+        lat_var.units = 'degrees_north'
+        lat_var.long_name = 'latitude'
+        lat_var.standard_name = 'latitude'
+        
+        # Longitude
+        lon_var = nc.createVariable('longitude', 'f8', ('longitude',), 
+                                  zlib=self.compression)
+        lon_var[:] = dimensions['longitude']
+        lon_var.units = 'degrees_east'
+        lon_var.long_name = 'longitude'
+        lon_var.standard_name = 'longitude'
+        
+        # Ensemble number (to match ERA5 format)
+        number_var = nc.createVariable('number', 'i8', (), zlib=self.compression)
+        number_var[()] = 0
+        number_var.units = '1'
+        number_var.long_name = 'ensemble member numerical id'
+
+    def _store_variables(self, nc, variables_data, clean_var_name):
+        # Create data variables
+        for var_name_key, var_info in variables_data.items():
+            data_var = nc.createVariable(
+                var_name_key, 'f4', 
+                ('valid_time', 'latitude', 'longitude'),
+                zlib=self.compression,
+                complevel=6 if self.compression else 0
+            )
+            
+            # Reshape data to match dimensions
+            data_var[0, :, :] = var_info['data']
+            data_var.units = var_info['units']
+            data_var.long_name = var_info['long_name']
+            
+            # Add coordinates attribute to reference the number coordinate
+            data_var.coordinates = 'number'
+
+            # Add standard names based on variable name
+            data_var.standard_name = var_standard_name[var_name_key.lower()]
+
+    def _store_global_attributes(self, nc, global_attrs):
+        for attr_name, attr_value in global_attrs.items():
+            setattr(nc, attr_name, attr_value)
+        
+        # Add standard global attributes
+        nc.Conventions = 'CF-1.8'
+        nc.title = f"Converted from {os.path.basename(self.input_path)}"
+    
     def convert(self):
         if os.path.isfile(self.input_path):
-            return grib_to_netcdf_pygrib(self.input_path, self.output_path, self.compression) \
+            return self.grib_to_netcdf_pygrib(self.input_path, self.output_path, self.compression) \
                 if self.method == 'pygrib' else grib_to_netcdf_xarray(self.input_path, self.output_path, self.compression)
         elif os.path.isdir(self.input_path):
             return convert_directory(self.input_path, self.output_path, pattern="*.grib", method=self.method, compression=self.compression)
