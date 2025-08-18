@@ -15,9 +15,12 @@ PARTITION=<PARTITION_NAME>  # replace with actual partition name
 
 echo -e "Running on hosts: $(echo $(scontrol show hostname))"
 
-srun -N 1 -p ${PARTITION}  --mpi=pmix --gres=gpu:8 --ntasks-per-node 8 \
---container-image ${HOMEDIR}/${SQSH} \
+srun -N 1 -p ${PARTITION}  --mpi=pmix --gres=gpu:1 \
+--container-image ${HOMEDIR}${SQSH} \
 --container-writable \
 --container-remap-root \
 --container-mounts ${HOMEDIR}/projects/physicsnemo:/workspace \
---pty /bin/bash
+bash -c "
+cd dev
+# make run
+"
