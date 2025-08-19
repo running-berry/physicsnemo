@@ -11,9 +11,11 @@ with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as 
 
 channel_vars = {
     "LowRes": ["t2m"],
-    "HighRes": ["t2m", "pptn"],
+    "HighRes": ["t2m", "u10", "qpepre"],
     "dummy": "t2m",
 }
+lon_min, lon_max = 121.00, 125.00
+lat_min, lat_max = 21.00, 25.00
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
@@ -81,8 +83,6 @@ for fname in ["HighRes", "LowRes"]:
     elif fname == "LowRes":
         cache_path = f"{cache_base}/era5/train/"
 
-    lon_min, lon_max = 121.00, 125.00
-    lat_min, lat_max = 21.00, 25.00
 
     base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
     end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(

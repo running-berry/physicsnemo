@@ -4,7 +4,7 @@ data_dir := $(abspath ./data)
 rwrf_dir := $(abspath ./rwrf_process)
 log_dir := $(abspath ./logs)
 variable := t2m u10 qpepre  # List of variables to process
-var_high_res := t2m qpepre  # High resolution variables
+var_high_res := t2m u10 qpepre  # High resolution variables
 var_low_res := t2m  # Low resolution variables
 
 pull:
