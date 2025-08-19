@@ -30,7 +30,7 @@ exp_valid_zarrs: ["exp"] # Zarr files to use for validation
 valid_dates: ['2019/08/03', '2019/08/03']
 
 # Variable selection
-invariants: ["c"] # Invariant quantitites to include
+invariants: ["lsm", "orog"] # Invariant quantitites to include
 input_channels: 'all' #'all' or list of channels to condition on
 diffusion_channels: "all" #'all' or list of channels to condition on
 kept_LowRes_channels: "all"

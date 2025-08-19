@@ -11,6 +11,8 @@ var_map = {
     "t2m": "T2",
     "u10": "umet10",
     "pptn": "qpepre",
+    "lsm": "LANDMASK",
+    "orog": "HGT",
     # add any others here...
 }
 

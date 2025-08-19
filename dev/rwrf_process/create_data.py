@@ -14,6 +14,7 @@ channel_vars = {
     "HighRes": ["t2m", "u10", "qpepre"],
     "dummy": "t2m",
 }
+invariants = ["lsm", "orog"]
 lon_min, lon_max = 121.00, 125.00
 lat_min, lat_max = 21.00, 25.00
 num_channel = len(channel_vars)
@@ -198,3 +199,63 @@ for fname in ["HighRes", "LowRes"]:
     print(
         f"Data for {experiment_name} saved to {data_base}/{fname}/{experiment_name}.zarr"
     )
+
+# process invariants
+# determine data path base
+cache_path = f"{cache_base}/rwrf/train"
+
+base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
+end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(23, "h")
+total_hours = int((end_date - base_date) / np.timedelta64(1, "h")) + 1
+offsets = np.arange(total_hours, dtype=np.int64)
+datetime_array = base_date + offsets * np.timedelta64(1, "h")
+dt = datetime_array[0]
+print(cache_path)
+invariant_arr = None
+for var in invariants:
+    yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
+    dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
+    print(f"Processing {dt_path}")
+
+    try:
+        dt_data, lon_grid, lat_grid, times = u1.extract_region(
+            dt_path,
+            var,
+            lon_min,
+            lon_max,
+            lat_min,
+            lat_max,
+            domain_size=domain_size,
+        )  # (1, Ny, Nx)
+        dt_data, lon_grid, lat_grid = u1.interp_to_domain(
+            lon_grid, lat_grid, dt_data, domain_size, method="linear"
+        )  # (1, Ny, Nx)
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Invariant file not found: {dt_path}")
+
+    # concatenate data
+    if invariant_arr is None:  # first iteration only
+        invariant_arr = dt_data.copy()
+    else:
+        # concatenate along axis=0 (channel)
+        invariant_arr = np.concatenate((invariant_arr, dt_data), axis=0)
+
+year_data = xr.Dataset(
+    {
+        "HighRes_invariants": (["channel", "y", "x"], invariant_arr),
+        "channel": invariants,
+        "latitude": (["y", "x"], lat_grid),
+        "longitude": (["y", "x"], lon_grid),
+    }
+)
+data_enc = {"HighRes_invariants": {"dtype": "float32", "compressor": None}}
+year_data.to_zarr(
+    f"{data_base}/invariants/invariants.zarr",
+    mode="w",
+    consolidated=True,
+    encoding=data_enc,
+    zarr_format=2,
+)
+
+print(f"Data for {experiment_name} saved to {data_base}/invariants/invariants.zarr")
