@@ -114,24 +114,6 @@ pres_levels: <xarray.Variable (pres_bottom_top: 31)> Size: 124B
 [1000.  975.  950.  925.  900.  875.  850.  825.  800.  775.  750.  700.
   650.  600.  550.  500.  450.  400.  350.  300.  250.  225.  200.  175.
   150.  125.  100.   70.   50.   30.   20.] (pressure levels in hPa)
-  
-LANDMASK: <xarray.Variable (Time: 1, south_north: 450, west_east: 450)> Size: 810kB
-[202500 values with dtype=float32]
-Attributes:
-    FieldType:    104
-    MemoryOrder:  XY 
-    stagger:      
-    description:  LAND MASK (1 FOR LAND, 0 FOR WATER)
-    units:
-
-HGT: <xarray.Variable (Time: 1, south_north: 450, west_east: 450)> Size: 810kB
-[202500 values with dtype=float32]
-Attributes:
-    FieldType:    104
-    MemoryOrder:  XY 
-    stagger:      
-    description:  Terrain Height
-    units:        m
 """
 
 
@@ -150,7 +132,6 @@ class RWRFLexicon(metaclass=LexiconType):
             "tcwv": "pw",
             "qpepre": "qpepre",
         }
-        invariants = {"lsm": "LANDMASK", "orog": "HGT"}
         prs_levels = [
             50,
             100,
@@ -179,7 +160,7 @@ class RWRFLexicon(metaclass=LexiconType):
             for level in prs_levels:
                 prs_variables[f"{id}{level}"] = f"{variable}"
 
-        return {**variables, **invariants, **prs_variables}
+        return {**variables, **prs_variables}
 
     VOCAB = build_vocab()
 

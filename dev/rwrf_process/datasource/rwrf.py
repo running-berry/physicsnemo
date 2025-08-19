@@ -98,8 +98,6 @@ VARIABLES = [
     "q925",
     "q1000",
     "qpepre",
-    "lsm",
-    "orog",
 ]
 
 

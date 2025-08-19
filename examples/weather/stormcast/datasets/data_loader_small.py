@@ -98,23 +98,7 @@ class Dataset(StormCastDataset):
 
     def get_invariants(self):
         """Return invariants used for training, or None if no invariants are used."""
-
-        invariants = xr.open_zarr(
-            os.path.join(self.location, "invariants", "invariants.zarr")
-        )
-
-        invariant_channels_in_dataset = list(invariants.channel.values)
-
-        for invariant in self.invariants:
-            assert (
-                invariant in invariant_channels_in_dataset
-            ), f"Requested invariant {invariant} not in dataset"
-
-        invariant_array = (
-            invariants["HighRes_invariants"].sel(channel=self.invariants).values
-        )
-
-        return invariant_array
+        return None
 
     def _get_files_stats(self):
         """
