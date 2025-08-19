@@ -9,7 +9,7 @@ Noted: Before the following steps, remember to ```pip install requirements.txt``
 1. Download data
 2. nc file to npz(numpy array)
 ```bash
-cd rwrf-process
+cd rwrf_process
 make nc-to-npz-t2m  
 ```
 3. You will see HighRes and LowRes built under dev/data 
@@ -26,7 +26,7 @@ python create_dummy.py
 When you already have DummyHighRes/DummyLowRes and HighRes/LowRes, you can:
 1. Execute check function:
 ```bash
-cd rwrf-process
+cd rwrf_process
 python check_zarr.py
 ```
 **revise the zarr paths in the check_zarr.py before you run.

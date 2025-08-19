@@ -1,9 +1,10 @@
 import os
+
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
+from datasource import RWRFQPEPREProcessor as mod
 from netCDF4 import Dataset
-import combine_rwrf_qpepre as mod
 
 # parameters
 DATE = "2019/08/03"
@@ -141,27 +142,27 @@ class TestCombineRwrfQpepre:
     ):
         # Check if the interpolation results match the known values
         # griddata and xarray should match the true values, while regular grid should not
-        assert np.allclose(
-            griddata_interp_result, true_values, atol=1e-5
-        ), "Griddata interpolation result does not match known values"
-        assert np.allclose(
-            xarray_interp_result, true_values, atol=1e-5
-        ), "Xarray interpolation result does not match known values"
-        assert not np.allclose(
-            regular_grid_result, true_values, atol=1e-5
-        ), "Regular grid interpolation result should not match known values"
+        assert np.allclose(griddata_interp_result, true_values, atol=1e-5), (
+            "Griddata interpolation result does not match known values"
+        )
+        assert np.allclose(xarray_interp_result, true_values, atol=1e-5), (
+            "Xarray interpolation result does not match known values"
+        )
+        assert not np.allclose(regular_grid_result, true_values, atol=1e-5), (
+            "Regular grid interpolation result should not match known values"
+        )
 
         # Check if the interpolation results from different methods are consistent
         # Griddata and xarray should be similar, but regular grid should differ
-        assert np.allclose(
-            griddata_interp_result, xarray_interp_result, atol=1e-5
-        ), "Griddata and xarray results differ"
+        assert np.allclose(griddata_interp_result, xarray_interp_result, atol=1e-5), (
+            "Griddata and xarray results differ"
+        )
         assert not np.allclose(
             griddata_interp_result, regular_grid_result, atol=1e-5
         ), "Griddata and regular grid interpolation results should differ"
-        assert not np.allclose(
-            xarray_interp_result, regular_grid_result, atol=1e-5
-        ), "Xarray and regular grid interpolation results should differ"
+        assert not np.allclose(xarray_interp_result, regular_grid_result, atol=1e-5), (
+            "Xarray and regular grid interpolation results should differ"
+        )
 
     def test_original_has_no_qpepre(self):
         orig_path = self.real_data_paths["orig"]

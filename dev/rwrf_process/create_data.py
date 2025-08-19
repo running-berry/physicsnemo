@@ -1,24 +1,26 @@
 import os
-import xarray as xr
+
 import numpy as np
 import util_extract as u1
-import zarr
+import xarray as xr
 import yaml
-
+import zarr
 
 with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
 channel_vars = {
     "LowRes": ["t2m"],
-    "HighRes": ["t2m", "pptn"],
+    "HighRes": ["t2m", "u10", "qpepre"],
     "dummy": "t2m",
 }
+lon_min, lon_max = 121.00, 125.00
+lat_min, lat_max = 21.00, 25.00
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
 test_datetime_start = cfg["train_dates"][0]
 test_datetime_last = cfg["train_dates"][-1]
-cache_base = "./cache"
+cache_base = "../data/cache"
 data_base = "../data"
 experiment_name = cfg["exp_train_zarrs"][0]
 
@@ -39,7 +41,7 @@ def create_dummy_arr(
     """
     # build the filename for this dt
     yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
-    fn = f"{data_var}_{yy}{mm}{dd}_{hh}.npz"
+    fn = f"{data_var}_{yy}{mm}{dd}{hh}.npz"
     dt_path = os.path.join(data_path, fn)
 
     # grab one real sample to infer shapes
@@ -77,12 +79,10 @@ for fname in ["HighRes", "LowRes"]:
 
     # determine data path base
     if fname == "HighRes":
-        cache_path = f"{cache_base}/rwrf/"
+        cache_path = f"{cache_base}/rwrf/train/"
     elif fname == "LowRes":
-        cache_path = f"{cache_base}/era5/"
+        cache_path = f"{cache_base}/era5/train/"
 
-    lon_min, lon_max = 121.00, 125.00
-    lat_min, lat_max = 21.00, 25.00
 
     base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
     end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(
@@ -110,7 +110,7 @@ for fname in ["HighRes", "LowRes"]:
             yy, mm, dd, hh = (
                 np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
             )
-            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}_{hh}.npz")
+            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
             print(f"Processing {dt_path}")
 
             try:

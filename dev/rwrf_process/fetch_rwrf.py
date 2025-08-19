@@ -43,7 +43,7 @@ def save_t2m_numpy(
     hr_str: str,
     variable: str,
     cropped_qpepre: bool = False,
-    out_dir: str = "./cache/rwrf/",
+    out_dir: str = "../data/cache/rwrf/train/",
 ):
     # 1) load dataset
     ds = load_wrf_interp_nc(date_str, hr_str, variable, cropped_qpepre)
@@ -60,7 +60,9 @@ def save_t2m_numpy(
     os.makedirs(out_dir, exist_ok=True)
 
     # 4) save as .npz (multiple arrays in one file)
-    fn = f"{variable}_" + date_str.replace("/", "") + f"_{hr_str}.npz"
+    if variable == "pptn":
+        variable = "qpepre"
+    fn = f"{variable}_" + date_str.replace("/", "") + f"{hr_str}.npz"
     out_path = os.path.join(out_dir, fn)
     np.savez(out_path, **{variable: data}, lat=lat, lon=lon, times=times)
     print(f"Saved arrays to {out_path}")
@@ -72,7 +74,7 @@ def main():
     )
     parser.add_argument(
         "--variable",
-        choices=["t2m", "u10", "pptn"],
+        choices=[var for var in var_map.keys()],
         required=True,
         help="Variable to extract:",
     )
