@@ -1,8 +1,11 @@
+PYTHONPATH := .
+export PYTHONPATH
+
 run: clean
 	python create_data.py
 
 combine-rwrf-qpepre:
-	python combine_rwrf_qpepre.py
+	python ./datasource/rwrf_qpepre_processor.py
 
 nc-to-npz-t2m:
 	python fetch_rwrf.py --variable t2m
@@ -12,13 +15,13 @@ nc-to-npz-u10:
 	python fetch_rwrf.py --variable u10
 	python fetch_era5.py --variable u10
 
-nc-to-npz-pptn:
-	python combine_rwrf_qpepre.py
+nc-to-npz-qpepre:
+	python ./datasource/rwrf_qpepre_processor.py
 	python fetch_rwrf.py --variable pptn
 	python fetch_era5.py --variable pptn
 
 nc-to-npz-cropped-qpepre:
-	python combine_rwrf_qpepre.py
+	python ./datasource/rwrf_qpepre_processor.py
 	python fetch_rwrf.py --variable pptn --cropped-qpepre
 	python fetch_era5.py --variable pptn
 
