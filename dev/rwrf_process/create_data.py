@@ -202,10 +202,7 @@ for fname in ["HighRes", "LowRes"]:
 
 # process invariants
 # determine data path base
-cache_path = f"{cache_base}/rwrf/"
-
-lon_min, lon_max = 121.00, 125.00
-lat_min, lat_max = 21.00, 25.00
+cache_path = f"{cache_base}/rwrf/train"
 
 base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
 end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(23, "h")
