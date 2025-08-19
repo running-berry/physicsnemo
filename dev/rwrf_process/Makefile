@@ -15,6 +15,12 @@ nc-to-npz-u10:
 	python fetch_rwrf.py --variable u10
 	python fetch_era5.py --variable u10
 
+nc-to-npz-lsm:
+	python fetch_rwrf.py --variable lsm
+
+nc-to-npz-orog:
+	python fetch_rwrf.py --variable orog
+
 nc-to-npz-qpepre:
 	python ./datasource/rwrf_qpepre_processor.py
 	python fetch_rwrf.py --variable pptn
@@ -25,7 +31,7 @@ nc-to-npz-cropped-qpepre:
 	python fetch_rwrf.py --variable pptn --cropped-qpepre
 	python fetch_era5.py --variable pptn
 
-nc-to-npz: nc-to-npz-t2m nc-to-npz-u10 nc-to-npz-pptn
+nc-to-npz: nc-to-npz-t2m nc-to-npz-u10 nc-to-npz-cropped-qpepre nc-to-npz-lsm nc-to-npz-orog
 
 plot-era5-t2m:
 	python plot_var.py ./cache/era5/t2m_20190803_00.npz --source era5 --variable t2m
