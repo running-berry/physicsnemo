@@ -3,3 +3,4 @@ data/*
 
 output/*
 logs/*
+rwrf-process/cache/*

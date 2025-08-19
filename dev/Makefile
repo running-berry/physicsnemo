@@ -25,9 +25,14 @@ log_dir:
 
 train:
 	cd $(stormcast_dir) && \
-	#timestamp=$$(date +%Y%m%d_%H%M); \
-	PYTHONPATH=/workspace torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py \
+	PYTHONPATH=/workspace torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py --config-name regression\
 	  2>&1 | tee $(log_dir)/train_$${timestamp}.log
+	
+train_diffusion:
+	cd $(stormcast_dir) && \
+	timestamp=$$(date +%Y%m%d_%H%M); \
+	PYTHONPATH=/workspace torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py --config-name diffusion \
+	  2>&1 | tee $(log_dir)/train_diffusion_$${timestamp}.log
 
 clear_data:
 	rm -rf $(data_dir)/DummyHighRes
@@ -63,12 +68,13 @@ output:
 	cp $(rwrf_dir)/config.yaml $(output_dir)/$(timestamp)/ || true 
 
 run:
-	$(MAKE) pull
+	#$(MAKE) pull
 	$(MAKE) log_dir
 	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
 	#$(MAKE) make_data
 	#$(MAKE) train
+	#$(MAKE) train_diffusion
 	$(MAKE) config_train
 	$(MAKE) output
