@@ -3,8 +3,8 @@ stormcast_dir := $(abspath ../examples/weather/stormcast)
 data_dir := $(abspath ./data)
 rwrf_dir := $(abspath ./rwrf_process)
 log_dir := $(abspath ./logs)
-variable := t2m u10 qpepre  # List of variables to process
-var_high_res := t2m u10 qpepre  # High resolution variables
+variable := lsm orog # List of variables to process
+var_high_res := t2m qpepre lsm orog # High resolution variables
 var_low_res := t2m  # Low resolution variables
 
 pull:
@@ -51,6 +51,12 @@ make_cache_old:
 		cd $(rwrf_dir) && \
 		python fetch_era5.py --variable $$variable; \
 	done
+
+	# For the invariant variables
+	for variable in $(variable); do \
+		cd $(rwrf_dir) && \
+		$(MAKE) nc-to-npz-$$variable; \
+	done	
 
 make_cache:
 	cd $(rwrf_dir) && \
