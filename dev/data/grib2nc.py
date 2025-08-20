@@ -346,7 +346,7 @@ class GribToNetCDFConverter:
         self.output_file = nc_path
         print(f"Converting {grib_path} to {nc_path} using pygrib")
         
-        filename, var_name, dt, timestamp= self.get_info_from_filename(grib_path)
+        filename, dt, var_name, timestamp= self._get_info_from_filename(grib_path)
         #try:
             # Open GRIB file
         with pygrib.open(grib_path) as grbs:
@@ -357,32 +357,13 @@ class GribToNetCDFConverter:
                 # Store dimensions and global attributes from fist message
                 if i == 1:
                     lats, lons, data, units, long_name = \
-                        self.get_info_from_grib(grb, var_name)
-
-                    dimensions = self._get_dimensions(
-                        grb, 
-                        lats,
-                        lons, 
-                        timestamp
-                    )
-                    try:
-                        global_attrs = self._get_global_attributes(
-                            grb,
-                            dt,
-                            grib_path
-                        )
-                    except:
-                        pass
+                        self._get_info_from_grib(grb, var_name)
+                    dimensions = self._get_dimensions( grb, lats, lons, timestamp)
+                    global_attrs = self._get_global_attributes(grb, dt, grib_path)
             
                 # Store variable data                        
                 variables_data, clean_var_name = self._get_variables(
-                    grb,
-                    variables_data,
-                    var_name, 
-                    data,
-                    units,
-                    long_name,
-                    timestamp
+                    grb, variables_data, var_name, data, units, long_name, timestamp
                 )
         
         # Create NetCDF file
@@ -402,7 +383,7 @@ class GribToNetCDFConverter:
         #    print(f"Error converting {grib_path}: {e}")
         #    return None
 
-    def get_info_from_filename(self, grib_fn):
+    def _get_info_from_filename(self, grib_fn):
         """
         Extract variable name and time from GRIB filename
         
@@ -419,13 +400,16 @@ class GribToNetCDFConverter:
         # Parse filename format: variable_YYYYMMDDHH.grib
         try:
             parts = base_name.split('_')
+            var_name = parts[0]
+
             if len(parts) >= 2:
-                var_name = parts[0]
-                datetime_str = parts[1]
-                
-                # Parse datetime: YYYYMMDDHH
-                if len(datetime_str) == 10:  # YYYYMMDDHH
-                    dt = datetime.strptime(datetime_str, "%Y%m%d%H")
+                if len(parts[1]) == 10: 
+                    # Format: variable_YYYYMMDDHH.grib
+                    dt = datetime.strptime(parts[1], "%Y%m%d%H")
+
+                elif len(parts) >= 3 and len(parts[1]) == 8 and len(parts[2]) == 2:
+                    # Format: variable_YYYYMMDD_HH.grib
+                    dt = datetime.strptime(parts[1] + parts[2], "%Y%m%d%H")
                 else:
                     raise ValueError("Invalid datetime format")
             else:
@@ -437,10 +421,11 @@ class GribToNetCDFConverter:
         
         # Convert to timestamp
         timestamp = calendar.timegm(dt.timetuple())
+        print("var_name:", var_name)
         
         return filename, dt, var_name, timestamp
     
-    def get_info_from_grib(self, grb, var_name):
+    def _get_info_from_grib(self, grb, var_name):
         var_info = {}
         # Get grid data
         lats, lons = grb.latlons()
@@ -458,10 +443,7 @@ class GribToNetCDFConverter:
     
     def _get_variables(self, grb, variables_data, var_name, data, units, long_name, timestamp): 
         # Use variable name from filename
-        clean_var_name = var_name.replace(' ', '_').replace('-', '_')
-        if clean_var_name[0].isdigit():
-            clean_var_name = f"var_{clean_var_name}"
-        
+        clean_var_name = var_name
         # Store variable data
         variables_data[clean_var_name] = {
                 'data': data,
@@ -470,6 +452,7 @@ class GribToNetCDFConverter:
                 'dimensions': ('latitude', 'longitude'),
                 'time': timestamp
             }
+        print(f"clean_var_name:{clean_var_name}")
 
         return variables_data, clean_var_name
 
@@ -490,7 +473,7 @@ class GribToNetCDFConverter:
             'institution': 'ECMWF',
             'created': datetime.now().isoformat(),
             'original_file': os.path.basename(grib_file),
-            'grid_type': grb.get('gridType', 'unknown'),
+            'grid_type': grb.gridType,
             'data_date': dt.strftime("%Y-%m-%d"),
             'data_time': dt.strftime("%H:%M:%S")
         })
@@ -567,6 +550,7 @@ class GribToNetCDFConverter:
     
     def convert(self):
         if os.path.isfile(self.input_path):
+            #return grib_to_netcdf_pygrib(self.input_path, self.output_path, self.compression) \
             return self.grib_to_netcdf_pygrib(self.input_path, self.output_path, self.compression) \
                 if self.method == 'pygrib' else grib_to_netcdf_xarray(self.input_path, self.output_path, self.compression)
         elif os.path.isdir(self.input_path):
