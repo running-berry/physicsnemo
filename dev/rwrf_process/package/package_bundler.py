@@ -396,7 +396,7 @@ class PackageBundler:
 
         self.add_component(
             YamlComponent(
-                "./package/model.yaml",
+                "./package/model.template.yaml",
                 update_vals={
                     "data": {
                         "local_img_size": [self.y, self.x],
