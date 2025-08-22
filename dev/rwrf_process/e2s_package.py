@@ -15,10 +15,11 @@ y, x = 32, 32  # dimensions
 
 package = PackageBundler(
     location="../e2s_package/",
+)
+package(
     variable=variable,
     conditioning_variable=conditioning_variable,
     invariant=invariant,
     y=y,  # default set to 32
     x=x,  # default set to 32
 )
-package()
