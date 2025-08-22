@@ -47,6 +47,7 @@ make_cache:
 	cd $(rwrf_dir) && \
 	python nc_to_npz.py
 
+<<<<<<< HEAD
 reset:
 	cd $(rwrf_dir) && \
 	python run_reset.py \
@@ -67,6 +68,10 @@ output:
     mv $(data_dir)/LowRes $(output_dir)/$(timestamp)/ || true && \
 	cp $(rwrf_dir)/config.yaml $(output_dir)/$(timestamp)/ || true 
 
+make_e2s_package:
+	cd $(rwrf_dir) && \
+	python e2s_package.py
+
 run:
 	#$(MAKE) pull
 	$(MAKE) log_dir
@@ -77,4 +82,5 @@ run:
 	#$(MAKE) train
 	#$(MAKE) train_diffusion
 	$(MAKE) config_train
+	$(MAKE) make_e2s_package
 	$(MAKE) output
