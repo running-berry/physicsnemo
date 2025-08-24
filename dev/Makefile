@@ -42,13 +42,18 @@ make_cache:
 	cd $(rwrf_dir) && \
 	python nc_to_npz.py
 
+reset:
+	cd $(rwrf_dir) && \
+	python run_reset.py \
+		--PLAN_PATH "$(test_plan)"
+
 config_train:
 	cd $(rwrf_dir) && \
 	python run_onetrain.py \
-	  --PLAN_PATH "$(test_plan)" \
-	  --RWRF_DIR "$(rwrf_dir)" \
-	  --STORMCAST_DIR "$(stormcast_dir)" \
-	  --LOG_DIR "$(log_dir)"
+		--PLAN_PATH "$(test_plan)" \
+		--RWRF_DIR "$(rwrf_dir)" \
+		--STORMCAST_DIR "$(stormcast_dir)" \
+		--LOG_DIR "$(log_dir)"
 
 output:
 	mkdir -p $(output_dir)/$(timestamp)/rundir && \

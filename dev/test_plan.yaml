@@ -1,0 +1,52 @@
+tests:
+  - name: test0
+    # config.yaml && dataset/small.yaml
+    exp_train_zarrs: ["exp"]
+    invariants: ["lsm", "orog"]
+    var_highres: ["t2m", "u10"]
+    var_lowres: ["t2m"]
+    lon_min: 121.00
+    lon_max: 125.00
+    lat_min: 21.00
+    lat_max: 25.00
+    train_dates: ['2019/08/03', '2019/08/03']
+    # training/small.yaml
+    total_train_steps: 160
+    validation_plot_variables: ["t2m"]
+    loss: 'regression'
+
+  - name: test1
+    # config.yaml && dataset/small.yaml
+    exp_train_zarrs: ["exp"]
+    invariants: ["lsm", "orog"]
+    var_highres: ["t2m", "u10"]
+    var_lowres: ["t2m"]
+    lon_min: 121.00
+    lon_max: 125.00
+    lat_min: 21.00
+    lat_max: 25.00
+    train_dates: ['2019/08/03', '2019/08/03']
+    # training/small.yaml
+    total_train_steps: 160
+    validation_plot_variables: ["t2m", "u10"]
+    loss: 'regression'
+
+  - name: test2
+    # config.yaml && dataset/small.yaml
+    exp_train_zarrs: ["exp"]
+    invariants: ["lsm", "orog"]
+    var_highres: ["t2m", "u10", qpepre]
+    var_lowres: ["t2m"]
+    lon_min: 121.00
+    lon_max: 125.00
+    lat_min: 21.00
+    lat_max: 25.00
+    train_dates: ['2019/08/03', '2019/08/03']
+    # training/small.yaml
+    total_train_steps: 320
+    validation_plot_variables: ["t2m", "u10"]
+    loss: 'regression'
+
+progress:
+  complete: 'test1'
+  next_test: 2

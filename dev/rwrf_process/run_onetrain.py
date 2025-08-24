@@ -26,7 +26,7 @@ def train(stormcast_dir, log_dir):
         check=True,
     )
 
-def reconfig(cfgp):
+def reconfig(cfgp, plan_path, cfg_path, stormcast_path):
     test_plan = cfgp.load(plan_path)
 
     idx = test_plan["progress"]["next_test"]
@@ -35,11 +35,39 @@ def reconfig(cfgp):
     else:
         print("[warn] No next test available in the test plan.")
         return (None, None)
+   
+    # Update config.yaml with test parameters 
+    cfg_set = cfgp.load(cfg_path)
+
+    cfg_set["invariants"] = test["invariants"]
+    cfg_set["var_highres"] = test["var_highres"]
+    cfg_set["var_lowres"] = test["var_lowres"]
+    cfg_set["lon_min"] = test["lon_min"]
+    cfg_set["lon_max"] = test["lon_max"]
+    cfg_set["lat_min"] = test["lat_min"]
+    cfg_set["lat_max"] = test["lat_max"]
     
-    cfgp.dump({
-        "fruits": test["fruits"],
-        "quantity": test["quantity"]      
-    }, cfg_path)
+    cfgp.dump(cfg_set, cfg_path)
+
+    # Update dataset/small.yaml with test parameters
+    cfg_path = f"{stormcast_path}/config/dataset/small.yaml" 
+    cfg_set = cfgp.load(cfg_path)
+
+    cfg_set["invariants"] = test["invariants"]
+    cfg_set["exp_train_zarrs"] = test["exp_train_zarrs"]
+    cfg_set["train_dates"] = test["train_dates"]
+    
+    cfgp.dump(cfg_set, cfg_path)
+
+    # Update training/small.yaml with test parameters
+    cfg_path = f"{stormcast_path}/config/training/small.yaml" 
+    cfg_set = cfgp.load(cfg_path)
+
+    cfg_set["total_train_steps"] = test["total_train_steps"]
+    cfg_set["validation_plot_variables"] = test["validation_plot_variables"]
+    cfg_set["loss"] = test["loss"]
+
+    cfgp.dump(cfg_set, cfg_path)
 
     test_name = test.get("name")
     print(f"Configuration updated for {test_name}.")
@@ -70,11 +98,11 @@ if __name__ == "__main__":
     cfgp = ConfigProcesser()
 
     # Reconfigure, create_data and train
-    #test_id, test_name = reconfig(cfgp, plan_path, cfg_path)
-    #if test_id is None:
-    #    sys.exit(0)
+    test_id, test_name = reconfig(cfgp, plan_path, cfg_path, args.STORMCAST_DIR)
+    if test_id is None:
+        sys.exit(0)
     create_data()
     train(args.STORMCAST_DIR, args.LOG_DIR)
 
     # Save progress
-    #save_progress_config(cfgp, test_id, test_name, plan_path)
+    save_progress_config(cfgp, test_id, test_name, plan_path)
