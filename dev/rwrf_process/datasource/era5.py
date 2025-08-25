@@ -100,7 +100,11 @@ class ERA5:
             variable = parts[0]
             # parse variable if kind of pressure levels
             pressure_level_pattern = r"^(u|v|z|t|q)(\d+)$"
-            if variable != "u10" and re.match(pressure_level_pattern, variable):
+            if (
+                variable != "u10"
+                and variable != "v10"
+                and re.match(pressure_level_pattern, variable)
+            ):
                 variable = "pressure_level"
             date_str = parts[1]
 
