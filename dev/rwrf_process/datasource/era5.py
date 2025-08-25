@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import pathlib
+import re
 
 import nest_asyncio
 import netCDF4 as nc
@@ -97,6 +98,10 @@ class ERA5:
                 ds.close()
                 return
             variable = parts[0]
+            # parse variable if kind of pressure levels
+            pressure_level_pattern = r"^(u|v|z|t|q)(\d+)$"
+            if variable != "u10" and re.match(pressure_level_pattern, variable):
+                variable = "pressure_level"
             date_str = parts[1]
 
             for key in ["latitude", "longitude", "valid_time", variable]:
@@ -109,8 +114,11 @@ class ERA5:
             lon = ds.variables["longitude"][:]
             times = ds.variables["valid_time"][:]
             data = ds.variables[variable][:]
+            # revert variable name if needed for saving .npz
             if variable == "tp":
                 variable = "qpepre"
+            else:
+                variable = parts[0]
 
         except Exception as e:
             logger.error(f"Error processing file {nc_path}: {e}")
