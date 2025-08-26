@@ -4,7 +4,7 @@ data_dir := $(abspath ./data)
 rwrf_dir := $(abspath ./rwrf_process)
 log_dir := $(abspath ./logs)
 output_dir := $(abspath ./output)
-timestamp := $(shell date +%Y%m%d_%H%M)
+timestamp := $(shell date +%Y%m%d_%H%M%S)
 test_plan := $(abspath ./test_plan.yaml)
 
 .PHONY: output
