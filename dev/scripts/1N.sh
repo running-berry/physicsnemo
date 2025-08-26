@@ -2,7 +2,7 @@
 #SBATCH -J job_name            # set job name
 #SBATCH -N 1                   # number of nodes
 #SBATCH --ntasks-per-node=1    # number of tasks per node
-#SBATCH -p <PARTITION_NAME>      # need partition name
+#SBATCH -p <Group Name>     # partition name
 #SBATCH -o %x.%j.out           # output log
 #SBATCH -e %x.%j.err           # error log
 #SBATCH --gpus-per-node=1      # number of GPUs per node
@@ -15,7 +15,7 @@ DATAPATH=<DATA_PATH> # replace with actual data path
 
 echo -e "Running on hosts: $(scontrol show hostname)"
 
-srun -N 1 -p ${PARTITION} --mpi=pmix --gres=gpu:1 \
+srun -N 1 -p ${PARTITION}  --mpi=pmix --gres=gpu:1 \
   --container-image ${HOMEDIR}${SQSH} \
   --container-writable \
   --container-remap-root \
@@ -23,5 +23,5 @@ srun -N 1 -p ${PARTITION} --mpi=pmix --gres=gpu:1 \
 ${HOMEDIR}/${DATAPATH}/ \
   bash -c "
     cd dev
-    make run
+    #make run
   "
