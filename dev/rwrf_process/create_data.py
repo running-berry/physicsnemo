@@ -40,28 +40,29 @@ def setup_logger():
 logger = setup_logger()
 
 with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
-    cfg = yaml.safe_load(f)
+    cfg_mod = yaml.safe_load(f)
+
+with open("./config.yaml", "r") as f:
+    cfg_dev = yaml.safe_load(f)
 
 channel_vars = {
-    "LowRes":["t2m", "u10", "pptn", "t1000", "t925", "u1000", \
-             "u200", "u250", "u500", "u700", "u850", "u925", \
-             "v10", "v1000", "v200", "v250", "v500", "v700", "v850", "v925"],
-    "HighRes": ["t2m", "u10", "qpepre"],
-    "dummy": "t2m",
+    "LowRes": cfg_dev["var_lowres"],
+    "HighRes": cfg_dev["var_highres"],
+    "dummy": cfg_dev["var_dummy"],
 }
-invariants = ["lsm", "orog"]
-lon_min, lon_max = 121.00, 125.00
-lat_min, lat_max = 21.00, 25.00
+invariants = cfg_dev["invariants"]
+lon_min, lon_max = cfg_dev["lon_min"], cfg_dev["lon_max"]
+lat_min, lat_max = cfg_dev["lat_min"], cfg_dev["lat_max"]
 num_channel = len(channel_vars)
-domain_size = tuple(cfg["HighRes_img_size"])
-train_datetime_start = cfg["train_dates"][0]
-train_datetime_last = cfg["train_dates"][-1]
-valid_datetime_start = cfg["valid_dates"][0]
-valid_datetime_last = cfg["valid_dates"][-1]
+domain_size = tuple(cfg_mod["HighRes_img_size"])
+train_datetime_start = cfg_mod["train_dates"][0]
+train_datetime_last = cfg_mod["train_dates"][-1]
+valid_datetime_start = cfg_mod["valid_dates"][0]
+valid_datetime_last = cfg_mod["valid_dates"][-1]
 
-cache_base = "/workspace/physicsnemo/dev/rwrf_process/cache"
+cache_base = "../data/cache"
 data_base = "../data"
-experiment_name = cfg["exp_train_zarrs"][0]
+experiment_name = cfg_mod["exp_train_zarrs"][0]
 
 
 def create_dummy_arr(

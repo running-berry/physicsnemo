@@ -1,13 +1,21 @@
 dataset_paths:
-  rwrf: "/workspace/NCDR_StormCast/data/RWRF"
-  era5: "/workspace/NCDR_StormCast/era5"
-  qpepre: "../data/pptn"
-  era5_npz: "/workspace/NCDR_StormCast/era5_npz/"
-  rwrf_npz: "/workspace/NCDR_StormCast/rwrf_npz/"
-
+  #rwrf: "/mnt/ncdr/RWRF"
+  #era5: "/mnt/ncdr/era5"
+  #qpepre: "/mnt/ncdr/data/obs_1hrRain/2019"
+  rwrf: "/mnt/data/rwrf"
+  era5: "/mnt/data/era5/train"
+  qpepre: "/mnt/data/qpepre"
 
 # dates for dataset
 date_strs: ["2019/08/03"]
-hr_strs: ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09",
-         "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-         "21", "22", "23"]
+hr_strs: ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
+  "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
+
+invariants: ["lsm", "orog"]
+var_highres: ["t2m"]
+var_lowres: ["t2m"]
+var_dummy: "t2m"
+lon_min: 121.00
+lon_max: 125.00
+lat_min: 21.00
+lat_max: 25.00
