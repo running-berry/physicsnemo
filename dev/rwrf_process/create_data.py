@@ -1,4 +1,7 @@
 import os
+import logging
+import sys
+from datetime import datetime
 
 import numpy as np
 import util_extract as u1
@@ -6,11 +9,43 @@ import xarray as xr
 import yaml
 import zarr
 
+# Configure logging
+def setup_logger():
+    """Setup logger with timestamp and process information."""
+    logger = logging.getLogger(__name__)
+    
+    # Remove existing handlers to avoid duplicates
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # File handler
+    log_file = f"create_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    logger.info(f"Logging initialized. Log file: {log_file}")
+    return logger
+
+logger = setup_logger()
+
 with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
 channel_vars = {
-    "LowRes": ["t2m"],
+    "LowRes":["t2m", "u10", "pptn", "t1000", "t925", "u1000", \
+             "u200", "u250", "u500", "u700", "u850", "u925", \
+             "v10", "v1000", "v200", "v250", "v500", "v700", "v850", "v925"],
     "HighRes": ["t2m", "u10", "qpepre"],
     "dummy": "t2m",
 }
@@ -19,9 +54,12 @@ lon_min, lon_max = 121.00, 125.00
 lat_min, lat_max = 21.00, 25.00
 num_channel = len(channel_vars)
 domain_size = tuple(cfg["HighRes_img_size"])
-test_datetime_start = cfg["train_dates"][0]
-test_datetime_last = cfg["train_dates"][-1]
-cache_base = "../data/cache"
+train_datetime_start = cfg["train_dates"][0]
+train_datetime_last = cfg["train_dates"][-1]
+valid_datetime_start = cfg["valid_dates"][0]
+valid_datetime_last = cfg["valid_dates"][-1]
+
+cache_base = "/workspace/physicsnemo/dev/rwrf_process/cache"
 data_base = "../data"
 experiment_name = cfg["exp_train_zarrs"][0]
 
@@ -40,10 +78,14 @@ def create_dummy_arr(
     of the real data for timestamp dt, and also return the lon/lat grids
     and time coords.
     """
+    logger.debug(f"Creating dummy array for {data_var} at {dt}")
+
     # build the filename for this dt
     yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
-    fn = f"{data_var}_{yy}{mm}{dd}{hh}.npz"
+    fn = f"{data_var}_{yy}{mm}{dd}_{hh}.npz"
     dt_path = os.path.join(data_path, fn)
+
+    logger.debug(f"Using template file: {dt_path}")
 
     # grab one real sample to infer shapes
     real_arr, lon_grid, lat_grid, times = u1.extract_region(
@@ -60,6 +102,7 @@ def create_dummy_arr(
     Ny_tgt, Nx_tgt = domain_size
 
     if Ny_full < Ny_tgt or Nx_full < Nx_tgt:
+        logger.debug(f"Interpolating from {Ny_full}x{Nx_full} to {Ny_tgt}x{Nx_tgt}")
         real_arr, lon_grid, lat_grid = u1.interp_to_domain(
             lon_grid, lat_grid, real_arr, domain_size, method="linear"
         )
@@ -68,50 +111,168 @@ def create_dummy_arr(
         real_arr, fill_value=0.0
     )  # future: or use fill_value=np.nan
 
+    logger.debug(f"Dummy array created with shape: {dummy_arr.shape}")
+
     return dummy_arr, lon_grid, lat_grid, times
 
 
-for fname in ["HighRes", "LowRes"]:
+def process_invariants(
+    cache_base: str,
+    data_base: str,
+    experiment_name: str,
+    start_date: str,
+):
+    """
+    Process invariant data (land-sea mask, orography) and save to zarr.
+    """
+    logger.info("=" * 50)
+    logger.info("PROCESSING INVARIANTS")
+    logger.info("=" * 50)
+    
+    # Create invariants directory
+    invariant_folder = f"{data_base}/invariants"
+    os.makedirs(invariant_folder, exist_ok=True)
+    logger.info(f"Created invariants directory: {invariant_folder}")
+    
+    # Use rwrf cache path for invariants
+    cache_path = f"{cache_base}/rwrf/"
+    logger.info(f"Using cache path: {cache_path}")
+
+    # Use first datetime to get invariant data
+    base_date = np.datetime64(start_date.replace("/", "-") + "T00:00:00")
+    dt = base_date
+    logger.info(f"Using reference date: {dt}")
+
+    invariant_arr = None
+    lon_grid = None
+    lat_grid = None
+    
+    for var in invariants:
+        logger.info(f"Processing invariant {i+1}/{len(invariants)}: {var}")
+        yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
+        dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
+        print(f"Processing invariant: {dt_path}")
+
+        try:
+            dt_data, lon_grid, lat_grid, times = u1.extract_region(
+                dt_path,
+                var,
+                lon_min,
+                lon_max,
+                lat_min,
+                lat_max,
+                domain_size=domain_size,
+            )  # (1, Ny, Nx)
+            dt_data, lon_grid, lat_grid = u1.interp_to_domain(
+                lon_grid, lat_grid, dt_data, domain_size, method="linear"
+            )  # (1, Ny, Nx)
+            logger.debug(f"Successfully loaded {var} with shape: {dt_data.shape}")
+
+        except FileNotFoundError:
+            logger.error(f"Invariant file not found: {dt_path}")
+            raise FileNotFoundError(f"Invariant file not found: {dt_path}")
+
+        # concatenate data
+        if invariant_arr is None:  # first iteration only
+            invariant_arr = dt_data.copy()
+            logger.debug(f"Initialized invariant array with shape: {invariant_arr.shape}")
+        else:
+            # concatenate along axis=0 (channel)
+            invariant_arr = np.concatenate((invariant_arr, dt_data), axis=0)
+            logger.debug(f"Concatenated invariant array, new shape: {invariant_arr.shape}")
+
+    # Create xarray dataset for invariants
+    year_data = xr.Dataset(
+        {
+            "HighRes_invariants": (["channel", "y", "x"], invariant_arr),
+            "channel": invariants,
+            "latitude": (["y", "x"], lat_grid),
+            "longitude": (["y", "x"], lon_grid),
+        }
+    )
+    data_enc = {"HighRes_invariants": {"dtype": "float32", "compressor": None}}
+    logger.info(f"Final invariant array shape: {invariant_arr.shape}")
+    logger.info(f"Invariant variables: {invariants}")
+
+    # Save invariants
+    year_data.to_zarr(
+        f"{data_base}/invariants/invariants.zarr",
+        mode="w",
+        consolidated=True,
+        encoding=data_enc,
+        zarr_format=2,
+    )
+    zarr.consolidate_metadata(f"{data_base}/invariants/invariants.zarr")
+
+    print(f"Invariants saved to {data_base}/invariants/invariants.zarr")
+
+
+def process_period(
+    start_date: str,
+    end_date: str,
+    fname: str,
+    channel_vars_dict: dict,
+    cache_base: str,
+    data_base: str,
+    domain_size: tuple,
+    experiment_name: str,
+    is_validation: bool = False,
+):
+    """
+    Process a period (train or validation) and write stats + zarr.
+    start_date/end_date: strings "YYYY/MM/DD" (end_date inclusive).
+    fname: "HighRes" or "LowRes"
+    channel_vars_dict: dict with channel variables for each resolution
+    """
+
+    period_type = "VALIDATION" if is_validation else "TRAINING"
+    logger.info("=" * 50)
+    logger.info(f"PROCESSING {period_type} DATA - {fname}")
+    logger.info("=" * 50)
+    logger.info(f"Period: {start_date} to {end_date}")
+    logger.info(f"Variables: {channel_vars_dict[fname]}")
+    
     folder_path = f"{data_base}/{fname}/stats"
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    else:
-        print(f"'{folder_path}' exists, skipping stats folder generation.")
+    os.makedirs(folder_path, exist_ok=True)
+    logger.info(f"Created stats directory: {folder_path}")
 
     # determine data path base
-    if fname == "HighRes":
-        cache_path = f"{cache_base}/rwrf/train/"
-    elif fname == "LowRes":
-        cache_path = f"{cache_base}/era5/train/"
+    cache_path = f"{cache_base}/rwrf/" if fname == "HighRes" else f"{cache_base}/era5/"
+    logger.info(f"Using cache path: {cache_path}")
 
-
-    base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
-    end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(
-        23, "h"
-    )
-    total_hours = int((end_date - base_date) / np.timedelta64(1, "h")) + 1
+    base_date = np.datetime64(start_date.replace("/", "-") + "T00:00:00")
+    end_date_np = np.datetime64(end_date.replace("/", "-")) + np.timedelta64(23, "h")
+    total_hours = int((end_date_np - base_date) / np.timedelta64(1, "h")) + 1
     offsets = np.arange(total_hours, dtype=np.int64)
     datetime_array = base_date + offsets * np.timedelta64(1, "h")
-    print(cache_path)
+
+    logger.info(f"Processing {total_hours} hourly time steps")
+
     # create the dummy data format by the first data
+    logger.info("Creating dummy data template...")
+
     dummy_data, dummy_lon_grid, dummy_lat_grid, dummy_times = create_dummy_arr(
         datetime_array[0],
         cache_path,
-        channel_vars["dummy"],
+        channel_vars_dict["dummy"],
         lon_min,
         lon_max,
         lat_min,
         lat_max,
     )
+
     missing_data = []
     data_arr = None
+    processed_files = 0
+    missing_files = 0
+
     for dt in datetime_array:
         channel_arr = None
-        for var in channel_vars[fname]:
+        for var in channel_vars_dict[fname]:
             yy, mm, dd, hh = (
                 np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
             )
-            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
+            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}_{hh}.npz")
             print(f"Processing {dt_path}")
 
             try:
@@ -127,11 +288,15 @@ for fname in ["HighRes", "LowRes"]:
                 dt_data, lon_grid, lat_grid = u1.interp_to_domain(
                     lon_grid, lat_grid, dt_data, domain_size, method="linear"
                 )  # (1, Ny, Nx)
-
+                processed_files += 1
             except FileNotFoundError:
                 # create dummy data
                 dt_data = dummy_data.copy()
-                missing_data.append(f"{yy}-{mm}-{dd} {hh}:00")
+                missing_file = f"{yy}-{mm}-{dd} {hh}:00"
+                missing_data.append(missing_file)
+                missing_files += 1
+                logger.warning(f"Missing file, using dummy data: {os.path.basename(dt_path)}")
+
 
             # concatenate data
             if channel_arr is None:  # first iteration only
@@ -150,15 +315,17 @@ for fname in ["HighRes", "LowRes"]:
             # concatenate along axis=0 (time)
             data_arr = np.concatenate((data_arr, channel_arr), axis=0)
 
+    logger.info(f"File processing summary:")
+    logger.info(f"  - Successfully processed: {processed_files}")
+    logger.info(f"  - Missing files (dummy data used): {missing_files}")
+    logger.info(f"  - Total files expected: {total_hours * len(channel_vars_dict[fname])}")
+
     # compute mean and std over time, latitude & longitude → leaves (n_chan,)
     # data_arr shape is (n_time, n_chan, ny, nx)
-
     if data_arr.ndim == 4:
-        # mean/std over time, y, x → result per level
         means = np.nanmean(data_arr, axis=(0, 2, 3)).astype(np.float32)
         stds = np.nanstd(data_arr, axis=(0, 2, 3)).astype(np.float32)
     elif data_arr.ndim == 3:
-        # mean/std over all values → wrap in length-1 array
         m = np.nanmean(data_arr).astype(np.float32)
         s = np.nanstd(data_arr).astype(np.float32)
         means = np.array([m], dtype=np.float32)
@@ -166,96 +333,140 @@ for fname in ["HighRes", "LowRes"]:
     else:
         raise ValueError(f"Expected 3D or 4D array, got {data_arr.ndim}D.")
 
-    # ensure float32 precision
     means = means.astype(np.float32)
     stds = stds.astype(np.float32)
-    print(f"Check: {means}, {stds}")
+    
+    # Only save stats for training 
+    if not is_validation:
+        np.save(f"{folder_path}/means.npy", means)
+        np.save(f"{folder_path}/stds.npy", stds)
 
-    # save them
-    np.save(f"{folder_path}/means.npy", means)
-    np.save(f"{folder_path}/stds.npy", stds)
-
-    data_shape = (total_hours, num_channel) + domain_size
-    print(data_arr.shape)
+    print(f"Data shape: {data_arr.shape}")
+    
+    # Create xarray dataset
     year_data = xr.Dataset(
         {
             f"{fname}": (["time", "channel", "y", "x"], data_arr),
             "time": datetime_array,
-            "channel": channel_vars[fname],
+            "channel": channel_vars_dict[fname],
             "latitude": (["y", "x"], lat_grid),
             "longitude": (["y", "x"], lon_grid),
         }
     )
     data_enc = {f"{fname}": {"dtype": "float32", "compressor": None}}
+    out_name = "valid.zarr" if is_validation else "train.zarr"
     year_data.to_zarr(
-        f"{data_base}/{fname}/{experiment_name}.zarr",
+        f"{data_base}/{fname}/{out_name}",
         mode="w",
         consolidated=True,
         encoding=data_enc,
         zarr_format=2,
     )
-    zarr.consolidate_metadata(f"{data_base}/{fname}/{experiment_name}.zarr")
+    zarr.consolidate_metadata(f"{data_base}/{fname}/{out_name}")
 
     print(
-        f"Data for {experiment_name} saved to {data_base}/{fname}/{experiment_name}.zarr"
+        f"{'Validation' if is_validation else 'Data'} for {experiment_name} saved to {data_base}/{fname}/{out_name}"
+    )
+    logger.info(f"{period_type} data processing completed successfully")
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Create dataset zarrs and stats.")
+    parser.add_argument(
+        "--highres-vars",
+        choices=channel_vars["HighRes"],
+        default="t2m",
+        help="HighRes channel variables (comma-separated). Default: t2m",
+    )
+    parser.add_argument(
+        "--lowres-vars",
+        choices=channel_vars["LowRes"],
+        default="t2m",
+        help="LowRes channel variables (comma-separated). Default: t2m",
+    )
+    parser.add_argument(
+        "--train-start",
+        default=train_datetime_start,
+        help=f"Training start date YYYY/MM/DD (default {train_datetime_start})",
+    )
+    parser.add_argument(
+        "--train-end",
+        default=train_datetime_last,
+        help=f"Training end date YYYY/MM/DD (default {train_datetime_last})",
+    )
+    parser.add_argument(
+        "--val-start",
+        default=valid_datetime_start,
+        help=f"Validation start date YYYY/MM/DD (default {valid_datetime_start})",
+    )
+    parser.add_argument(
+        "--val-end",
+        default=valid_datetime_last,
+        help=f"Validation end date YYYY/MM/DD (default {valid_datetime_last})",
+    )
+    parser.add_argument(
+        "--cache-base", default=cache_base, help=f"Cache base path (default {cache_base})"
+    )
+    parser.add_argument(
+        "--data-base", default=data_base, help=f"Data base path (default {data_base})"
+    )
+    parser.add_argument(
+        "--process-invariants", 
+        action="store_true",
+        help="Process invariant data (land-sea mask, orography)"
     )
 
-# process invariants
-# determine data path base
-cache_path = f"{cache_base}/rwrf/train"
+    args = parser.parse_args()
 
-base_date = np.datetime64(test_datetime_start.replace("/", "-") + "T00:00:00")
-end_date = np.datetime64(test_datetime_last.replace("/", "-")) + np.timedelta64(23, "h")
-total_hours = int((end_date - base_date) / np.timedelta64(1, "h")) + 1
-offsets = np.arange(total_hours, dtype=np.int64)
-datetime_array = base_date + offsets * np.timedelta64(1, "h")
-dt = datetime_array[0]
-print(cache_path)
-invariant_arr = None
-for var in invariants:
-    yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
-    dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
-    print(f"Processing {dt_path}")
-
-    try:
-        dt_data, lon_grid, lat_grid, times = u1.extract_region(
-            dt_path,
-            var,
-            lon_min,
-            lon_max,
-            lat_min,
-            lat_max,
-            domain_size=domain_size,
-        )  # (1, Ny, Nx)
-        dt_data, lon_grid, lat_grid = u1.interp_to_domain(
-            lon_grid, lat_grid, dt_data, domain_size, method="linear"
-        )  # (1, Ny, Nx)
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Invariant file not found: {dt_path}")
-
-    # concatenate data
-    if invariant_arr is None:  # first iteration only
-        invariant_arr = dt_data.copy()
-    else:
-        # concatenate along axis=0 (channel)
-        invariant_arr = np.concatenate((invariant_arr, dt_data), axis=0)
-
-year_data = xr.Dataset(
-    {
-        "HighRes_invariants": (["channel", "y", "x"], invariant_arr),
-        "channel": invariants,
-        "latitude": (["y", "x"], lat_grid),
-        "longitude": (["y", "x"], lon_grid),
+    # Parse channel variables
+    highres_vars = [v.strip() for v in args.highres_vars.split(",") if v.strip()]
+    lowres_vars = [v.strip() for v in args.lowres_vars.split(",") if v.strip()]
+    
+    channel_vars_dict = {
+        "HighRes": highres_vars,
+        "LowRes": lowres_vars,
+        "dummy": highres_vars[0] if highres_vars else "t2m"
     }
-)
-data_enc = {"HighRes_invariants": {"dtype": "float32", "compressor": None}}
-year_data.to_zarr(
-    f"{data_base}/invariants/invariants.zarr",
-    mode="w",
-    consolidated=True,
-    encoding=data_enc,
-    zarr_format=2,
-)
 
-print(f"Data for {experiment_name} saved to {data_base}/invariants/invariants.zarr")
+    # Process invariants if requested
+    if args.process_invariants:
+        process_invariants(
+            cache_base=args.cache_base,
+            data_base=args.data_base,
+            experiment_name=experiment_name,
+            start_date=args.train_start,
+        )
+
+    # process training period
+    for fname in ["HighRes", "LowRes"]:
+        process_period(
+            start_date=args.train_start,
+            end_date=args.train_end,
+            fname=fname,
+            channel_vars_dict=channel_vars_dict,
+            cache_base=args.cache_base,
+            data_base=args.data_base,
+            domain_size=domain_size,
+            experiment_name=experiment_name,
+            is_validation=False,
+        )
+
+    # process validation period
+    for fname in ["HighRes", "LowRes"]:
+        process_period(
+            start_date=args.val_start,
+            end_date=args.val_end,
+            fname=fname,
+            channel_vars_dict=channel_vars_dict,
+            cache_base=args.cache_base,
+            data_base=args.data_base,
+            domain_size=domain_size,
+            experiment_name=experiment_name,
+            is_validation=True,
+        )
+
+
+if __name__ == "__main__":
+    main()
