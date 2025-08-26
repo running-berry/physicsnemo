@@ -133,7 +133,7 @@ class Dataset(StormCastDataset):
         self.logger0.info(f"list of all LowRes paths: {self.LowRes_paths}")
 
         if self.train:
-            # keep only zarr files specified in the params.exp_train_zarrs list
+            # keep only zarr files specified in the params.train list
             self.LowRes_paths = [
                 x
                 for x in self.LowRes_paths
@@ -144,7 +144,7 @@ class Dataset(StormCastDataset):
                 os.path.basename(x).replace(".zarr", "") for x in self.LowRes_paths
             ]
         else:
-            # keep only zarr files specified in the params.exp_valid_zarrs list
+            # keep only zarr files specified in the params.valid_dates list
             self.LowRes_paths = [
                 x
                 for x in self.LowRes_paths
@@ -179,7 +179,7 @@ class Dataset(StormCastDataset):
             self.HighRes_paths, key=lambda p: os.path.basename(p).replace(".zarr", "")
         )
         if self.train:
-            # keep only zarr files specified in the params.exp_train_zarrs list
+            # keep only zarr files specified in the params.train_dates list
             self.HighRes_paths = [
                 x
                 for x in self.HighRes_paths
@@ -237,8 +237,13 @@ class Dataset(StormCastDataset):
         """
         Loop through all years and count the total number of samples
         """
-        test_datetime_start = self.params.train_dates[0]
-        test_datetime_last = self.params.train_dates[1]
+        # Use different date ranges for train vs validation
+        if self.train:
+            test_datetime_start = self.params.train_dates[0]
+            test_datetime_last = self.params.train_dates[1]
+        else:
+            test_datetime_start = self.params.valid_dates[0]
+            test_datetime_last = self.params.valid_dates[1]
 
         first_sample = datetime.strptime(
             test_datetime_start, "%Y/%m/%d") \
