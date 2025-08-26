@@ -9,9 +9,9 @@
 # job runtime limit
 ##SBATCH -t 01:00:00
 
-SQSH=/path/to/physicsnemo_25.03.sqsh  
+SQSH=/home/physicsnemo_25.03.sqsh  
 CNAME=physicsnemo_25_03
-WORKDIR=/workspace
+WORKDIR=/tmp
 HOST_WORKDIR=$PWD
 
 set -euo pipefail
@@ -25,7 +25,7 @@ srun --label bash -lc "
   enroot start \
     --mount '${HOST_WORKDIR}:${WORKDIR}' \
     --env PIP_CACHE_DIR=/tmp/pipcache \
-    --env REPO_URL=https://github.com/runberry/physicsnemo.git \
+    --env REPO_URL=https://github.com/running-berry/physicsnemo.git \
     --env REPO_DIR=${WORKDIR}/physicsnemo \
     --env BRANCH=exp/tp1 \
     '${CNAME}' bash -lc 'cd ${WORKDIR} && chmod +x hpl.sh && ./hpl.sh'

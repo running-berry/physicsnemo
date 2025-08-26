@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/runberry/physicsnemo.git}"
+REPO_URL="${REPO_URL:-https://github.com/running-berry/physicsnemo.git}"
 REPO_DIR="${REPO_DIR:-$PWD/physicsnemo}"
 BRANCH="${BRANCH:-exp/tp1}"
 
@@ -41,6 +41,8 @@ cd dev
 "$PYTHON_BIN" -m pip install --upgrade pip
 "$PYTHON_BIN" -m pip install -r requirements.txt
 cd ..
+
+git checkout "feat/train-hpc-scripts"
 
 # make run
 make run

@@ -63,6 +63,7 @@ make_cache:
 	python nc_to_npz.py
 
 run:
+	$(MAKE) pull
 	$(MAKE) log_dir
 	$(MAKE) make_cache
 	$(MAKE) clear_data	
