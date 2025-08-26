@@ -271,7 +271,6 @@ class Dataset(StormCastDataset):
                 and (x + timedelta(hours=self.dt) <= last_sample)
                 and ((x + timedelta(hours=self.dt)) not in missing_samples)
         ]
-
         self.logger0.info(
             "Total datetimes in training set are {} of which {} are valid".format(
                 len(all_datetimes), len(self.valid_samples)

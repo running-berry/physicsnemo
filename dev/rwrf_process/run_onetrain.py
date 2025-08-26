@@ -6,6 +6,11 @@ import argparse
 import os
 import shlex
 
+def make_cache(rwrf_dir):
+    subprocess.run(
+        ["python", "nc_to_npz.py"],
+        cwd=rwrf_dir   # this runs the command as if you had cd'ed there
+    )
 def create_data():
     subprocess.run(["python", "create_data.py"])
 
@@ -56,6 +61,7 @@ def reconfig(cfgp, plan_path, cfg_path, stormcast_path):
     cfg_set["invariants"] = test["invariants"]
     cfg_set["exp_train_zarrs"] = test["exp_train_zarrs"]
     cfg_set["train_dates"] = test["train_dates"]
+    cfg_set["valid_dates"] = test["valid_dates"]
     
     cfgp.dump(cfg_set, cfg_path)
 
@@ -64,6 +70,8 @@ def reconfig(cfgp, plan_path, cfg_path, stormcast_path):
     cfg_set = cfgp.load(cfg_path)
 
     cfg_set["total_train_steps"] = test["total_train_steps"]
+    cfg_set["validation_freq"] = test["validation_freq"]
+    cfg_set["checkpoint_freq"] = test["checkpoint_freq"]
     cfg_set["validation_plot_variables"] = test["validation_plot_variables"]
     cfg_set["loss"] = test["loss"]
 
@@ -101,6 +109,8 @@ if __name__ == "__main__":
     test_id, test_name = reconfig(cfgp, plan_path, cfg_path, args.STORMCAST_DIR)
     if test_id is None:
         sys.exit(0)
+
+    make_cache(args.RWRF_DIR)
     create_data()
     train(args.STORMCAST_DIR, args.LOG_DIR)
 

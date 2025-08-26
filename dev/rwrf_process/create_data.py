@@ -29,12 +29,12 @@ def setup_logger():
     logger.addHandler(console_handler)
     
     # File handler
-    log_file = f"create_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    # log_file = f"create_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    # file_handler = logging.FileHandler(log_file)
+    # file_handler.setFormatter(formatter)
+    # logger.addHandler(file_handler)
     
-    logger.info(f"Logging initialized. Log file: {log_file}")
+    # logger.info(f"Logging initialized. Log file: {log_file}")
     return logger
 
 logger = setup_logger()
@@ -48,7 +48,7 @@ with open("./config.yaml", "r") as f:
 channel_vars = {
     "LowRes": cfg_dev["var_lowres"],
     "HighRes": cfg_dev["var_highres"],
-    "dummy": cfg_dev["var_dummy"],
+    "dummy": cfg_dev["var_highres"][0] if cfg_dev["var_highres"] else "t2m",
 }
 invariants = cfg_dev["invariants"]
 lon_min, lon_max = cfg_dev["lon_min"], cfg_dev["lon_max"]
@@ -83,7 +83,7 @@ def create_dummy_arr(
 
     # build the filename for this dt
     yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
-    fn = f"{data_var}_{yy}{mm}{dd}_{hh}.npz"
+    fn = f"{data_var}_{yy}{mm}{dd}{hh}.npz"
     dt_path = os.path.join(data_path, fn)
 
     logger.debug(f"Using template file: {dt_path}")
@@ -136,7 +136,7 @@ def process_invariants(
     logger.info(f"Created invariants directory: {invariant_folder}")
     
     # Use rwrf cache path for invariants
-    cache_path = f"{cache_base}/rwrf/"
+    cache_path = f"{cache_base}/rwrf"
     logger.info(f"Using cache path: {cache_path}")
 
     # Use first datetime to get invariant data
@@ -149,7 +149,7 @@ def process_invariants(
     lat_grid = None
     
     for var in invariants:
-        logger.info(f"Processing invariant {i+1}/{len(invariants)}: {var}")
+        logger.info(f"Processing invariant/{len(invariants)}: {var}")
         yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
         dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
         print(f"Processing invariant: {dt_path}")
@@ -238,7 +238,7 @@ def process_period(
     logger.info(f"Created stats directory: {folder_path}")
 
     # determine data path base
-    cache_path = f"{cache_base}/rwrf/" if fname == "HighRes" else f"{cache_base}/era5/"
+    cache_path = f"{cache_base}/rwrf" if fname == "HighRes" else f"{cache_base}/era5"
     logger.info(f"Using cache path: {cache_path}")
 
     base_date = np.datetime64(start_date.replace("/", "-") + "T00:00:00")
@@ -273,7 +273,7 @@ def process_period(
             yy, mm, dd, hh = (
                 np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
             )
-            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}_{hh}.npz")
+            dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
             print(f"Processing {dt_path}")
 
             try:
@@ -375,18 +375,18 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Create dataset zarrs and stats.")
-    parser.add_argument(
-        "--highres-vars",
-        choices=channel_vars["HighRes"],
-        default="t2m",
-        help="HighRes channel variables (comma-separated). Default: t2m",
-    )
-    parser.add_argument(
-        "--lowres-vars",
-        choices=channel_vars["LowRes"],
-        default="t2m",
-        help="LowRes channel variables (comma-separated). Default: t2m",
-    )
+    # parser.add_argument(
+    #     "--highres-vars",
+    #     choices=channel_vars["HighRes"],
+    #     default="t2m",
+    #     help="HighRes channel variables (comma-separated). Default: t2m",
+    # )
+    # parser.add_argument(
+    #     "--lowres-vars",
+    #     choices=channel_vars["LowRes"],
+    #     default="t2m",
+    #     help="LowRes channel variables (comma-separated). Default: t2m",
+    # )
     parser.add_argument(
         "--train-start",
         default=train_datetime_start,
@@ -421,24 +421,19 @@ def main():
 
     args = parser.parse_args()
 
-    # Parse channel variables
-    highres_vars = [v.strip() for v in args.highres_vars.split(",") if v.strip()]
-    lowres_vars = [v.strip() for v in args.lowres_vars.split(",") if v.strip()]
+    logger.info(f"train-start: {args.train_start}")
+    logger.info(f"train-end: {args.train_end}")
     
-    channel_vars_dict = {
-        "HighRes": highres_vars,
-        "LowRes": lowres_vars,
-        "dummy": highres_vars[0] if highres_vars else "t2m"
-    }
+    channel_vars_dict = channel_vars
 
     # Process invariants if requested
-    if args.process_invariants:
-        process_invariants(
-            cache_base=args.cache_base,
-            data_base=args.data_base,
-            experiment_name=experiment_name,
-            start_date=args.train_start,
-        )
+    # if args.process_invariants:
+    process_invariants(
+        cache_base=args.cache_base,
+        data_base=args.data_base,
+        experiment_name=experiment_name,
+        start_date=args.train_start,
+    )
 
     # process training period
     for fname in ["HighRes", "LowRes"]:

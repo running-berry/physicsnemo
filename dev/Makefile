@@ -63,9 +63,9 @@ output:
 	cp $(rwrf_dir)/config.yaml $(output_dir)/$(timestamp)/ || true 
 
 run:
-	$(MAKE) pull
+# 	$(MAKE) pull
 	$(MAKE) log_dir
-	$(MAKE) make_cache
+# 	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
 	#$(MAKE) make_data

@@ -3,11 +3,15 @@ import os
 import pathlib
 from datetime import datetime, timedelta
 import shutil
+import yaml
 
 from datasource import RWRF, RWRFQPEPREProcessor
 from utils import CONFIG
 
 logger = logging.getLogger(__name__)
+
+with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
+    cfg_mod = yaml.safe_load(f)
 
 class RWRFLite:
     def __init__(
@@ -24,14 +28,34 @@ class RWRFLite:
         )
         self.rwrf = RWRF(
             nc_folder=tmp_src,
-            npz_folder="../data/cache/rwrf/train",
+            npz_folder="../data/cache/rwrf",
             verbose=True,
     )
-
     def __call__(self, *args, **kwds):
-        """Function to get data"""
-        self.process_files_from_date_list(CONFIG.date_strs, CONFIG.hr_strs) 
+        """Generate all train/valid dates and process every hour (00–23)."""
+        def _expand_range(start_str: str, end_str: str) -> list[str]:
+            start = datetime.strptime(start_str, "%Y/%m/%d")
+            end   = datetime.strptime(end_str,   "%Y/%m/%d")
+            return [
+                (start + timedelta(days=d)).strftime("%Y/%m/%d")
+                for d in range((end - start).days + 1)
+            ]
+
+        # 1) read ranges from config (each is [start, end])
+        train_start, train_end = cfg_mod["train_dates"][0], cfg_mod["train_dates"][-1]
+        valid_start, valid_end = cfg_mod["valid_dates"][0], cfg_mod["valid_dates"][-1]
+
+        # 2) expand to full date lists (inclusive)
+        train_dates = _expand_range(train_start, train_end)
+        valid_dates = _expand_range(valid_start, valid_end)
+
+        # 3) combine + sort + dedupe
+        date_strs = sorted(set(train_dates + valid_dates))
+        logger.info(f"dates are: {date_strs}")
+        # 4) run
+        self.process_files_from_date_list(date_strs, CONFIG.hr_strs)
     
+
     def process_files_from_date_list(
         self, date_strs: list[str], hr_strs: list[str]
     ) -> None:

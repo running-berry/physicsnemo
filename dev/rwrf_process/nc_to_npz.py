@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 era5 = ERA5(
     nc_folder=CONFIG.era5,
-    npz_folder="../data/cache/era5/train",
+    npz_folder="../data/cache/era5/",
     verbose=True,
 )
 era5()
@@ -25,7 +25,7 @@ rwrf_lite = RWRFLite(
     qpepre_src=CONFIG.qpepre,
     rwrf_src=CONFIG.rwrf,
     tmp_src=tmp_folder,
-    npz_folder="../data/cache/rwrf/train",
+    npz_folder="../data/cache/rwrf/",
     verbose=True,
 )
 
