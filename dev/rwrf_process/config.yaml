@@ -1,7 +1,10 @@
 dataset_paths:
-  rwrf: "../data/rwrf"
-  era5: "../data/era5/train"
+  rwrf: "/workspace/NCDR_StormCast/data/RWRF"
+  era5: "/workspace/NCDR_StormCast/era5"
   qpepre: "../data/pptn"
+  era5_npz: "/workspace/NCDR_StormCast/era5_npz/"
+  rwrf_npz: "/workspace/NCDR_StormCast/rwrf_npz/"
+
 
 # dates for dataset
 date_strs: ["2019/08/03"]
