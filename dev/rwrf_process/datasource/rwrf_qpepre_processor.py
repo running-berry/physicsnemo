@@ -47,7 +47,7 @@ class RWRFQPEPREProcessor:
             date_str = f"{date[:4]}/{date[4:6]}/{date[6:8]}"
             hr_str = date[-2:]
             if self._check_exists(date_str, hr_str):
-                logger.info(
+                logger.debug(
                     f"RWRF QPEPRE dataset already exists for {date_str} {hr_str}. Skipping."
                 )
                 continue
@@ -69,12 +69,12 @@ class RWRFQPEPREProcessor:
         for date_str in date_strs:
             for hr_str in hr_strs:
                 if self._check_exists(date_str, hr_str):
-                    logger.info(
+                    logger.debug(
                         f"Converted file already exists for QPEPRE {date_str} {hr_str}, skipping conversion."
                     )
                     continue
 
-                logger.info(
+                logger.debug(
                     f"Queueing RWRF-QPEPRE processing for {date_str} {hr_str}..."
                 )
                 self._process(date_str, hr_str)
@@ -119,12 +119,18 @@ class RWRFQPEPREProcessor:
         """
         dt = datetime.strptime(date_str, "%Y/%m/%d")
         fmt_dt_str = dt.strftime(f"%Y-%m-%d_{int(hr_str):02d}")
-        org_path = f"{self.rwrf_src}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp"
+        
+        base = pathlib.Path(self.rwrf_src)
+        matches = list(base.rglob(fmt_dt_str))
+        if not matches:
+            logger.warning(f"No matching RWRF files found for {date_str} {hr_str}")
+            org_path = f"{self.rwrf_src}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp" # dummy path
+        else:
+            target_folder = matches[0]
+            org_path = str(target_folder / f"wrfout_d01_{fmt_dt_str}_interp")
+            
         new_path = (
             f"{self.output_dir}/{fmt_dt_str}/wrfout_d01_{fmt_dt_str}_interp_qpepre.nc"
-        )
-        pathlib.Path(f"{self.output_dir}/{fmt_dt_str}").mkdir(
-            parents=True, exist_ok=True
         )
         return org_path, new_path
 
@@ -329,14 +335,16 @@ class RWRFQPEPREProcessor:
             temp_nc_path = self._convert_txt_to_nc(date_str, hr_str)
 
             org_rwrf_path, new_rwrf_path = self._get_rwrf_paths(date_str, hr_str)
+            pathlib.Path(new_rwrf_path).parent.mkdir(parents=True, exist_ok=True)
+            
             with Dataset(temp_nc_path) as qpepre_ds, Dataset(org_rwrf_path) as rwrf_ds:
                 self.combine_rwrf_qpepre(rwrf_ds, qpepre_ds, new_rwrf_path)
 
             cropped_path = self._crop_rwrf_by_qpepre(new_rwrf_path)
-            logger.info(f"Successfully created: {cropped_path}")
+            logger.debug(f"Successfully created: {cropped_path}")
 
         except Exception as e:
-            logger.info(f"ERROR processing QPEPRE {date_str} {hr_str}- {e}")
+            logger.debug(f"ERROR processing QPEPRE {date_str} {hr_str}- {e}")
         finally:
             if temp_nc_path and os.path.exists(temp_nc_path):
                 logger.debug(f"Removed temporary file: {temp_nc_path}")

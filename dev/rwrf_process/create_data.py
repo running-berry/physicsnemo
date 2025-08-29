@@ -14,6 +14,7 @@ import zarr
 def setup_logger():
     """Setup logger with timestamp and process information."""
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
     # Remove existing handlers to avoid duplicates
     for handler in logger.handlers[:]:
@@ -21,7 +22,7 @@ def setup_logger():
 
     # Create formatter
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s - %(name)s:%(lineno)d: - %(levelname)s - %(message)s"
     )
 
     # Console handler
@@ -158,7 +159,7 @@ def process_invariants(
             np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
         )
         dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
-        print(f"Processing invariant: {dt_path}")
+        logger.info(f"Processing invariant: {dt_path}")
 
         try:
             dt_data, lon_grid, lat_grid, times = u1.extract_region(
@@ -215,7 +216,7 @@ def process_invariants(
     )
     zarr.consolidate_metadata(f"{data_base}/invariants/invariants.zarr")
 
-    print(f"Invariants saved to {data_base}/invariants/invariants.zarr")
+    logger.info(f"Invariants saved to {data_base}/invariants/invariants.zarr")
 
 
 def process_period(
@@ -285,7 +286,7 @@ def process_period(
                 np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
             )
             dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
-            print(f"Processing {dt_path}")
+            logger.info(f"Processing {dt_path}")
 
             try:
                 dt_data, lon_grid, lat_grid, times = u1.extract_region(
@@ -309,7 +310,7 @@ def process_period(
                 missing_files += 1
                 lon_grid = dummy_lon_grid
                 lat_grid = dummy_lat_grid
-                logger.warning("Missing file, using dummy data")
+                logger.warning(f"Missing file, using dummy data: {cache_base}/dummy/dummy_{fname}.npz")
 
             # concatenate data
             if channel_arr is None:  # first iteration only
@@ -356,7 +357,7 @@ def process_period(
         np.save(f"{folder_path}/means.npy", means)
         np.save(f"{folder_path}/stds.npy", stds)
 
-    print(f"Data shape: {data_arr.shape}")
+    logger.info(f"Data shape: {data_arr.shape}")
 
     # Create xarray dataset
     year_data = xr.Dataset(
@@ -379,7 +380,7 @@ def process_period(
     )
     zarr.consolidate_metadata(f"{data_base}/{fname}/{out_name}")
 
-    print(
+    logger.info(
         f"{'Validation' if is_validation else 'Data'} for {experiment_name} saved to {data_base}/{fname}/{out_name}"
     )
     logger.info(f"{period_type} data processing completed successfully")

@@ -124,12 +124,10 @@ class RWRF:
         self,
         nc_folder: str,
         npz_folder: str,
-        verbose: bool = True,
         overwrite: bool = False,
     ):
         self.nc_folder = pathlib.Path(nc_folder)
         self.npz_folder = pathlib.Path(npz_folder)
-        self._verbose = verbose
         self._overwrite = overwrite
         self.lexicon = RWRFLexicon
 
@@ -167,20 +165,29 @@ class RWRF:
 
         try:
             with nc.Dataset(nc_path) as ds:
-                # Extract date string from filename: wrfout_d01_{YYYY}-{MM}-{DD}_{HH}_interp_cropped_qpepre.nc
+                # Extract date string from filename: wrfout_d01_{YYYY}-{MM}-{DD}_{HH}_interp_cropped_qpepre.nc or wrfout_d01_{YYYY}-{MM}-{DD}_{HH}_interp
                 basename = nc_path.stem
-                if not basename.startswith("wrfout_d01_") or not basename.endswith(
-                    "_interp_cropped_qpepre"
+                if not (
+                    basename.startswith("wrfout_d01_")
+                    and (basename.endswith("_interp_cropped_qpepre") or basename.endswith("_interp"))
                 ):
                     logger.error(f"Filename format not recognized: {basename}")
                     return
-                date_str = basename[11:-22].replace("_", "").replace("-", "")
+                if basename.endswith("_interp_cropped_qpepre"):
+                    date_str = basename[11:-22].replace("_", "").replace("-", "")
+                else:
+                    date_str = basename[11:-7].replace("_", "").replace("-", "")
                 lat = ds.variables["XLAT"][:]
                 lon = ds.variables["XLONG"][:]
                 times = ds.variables["Times"][:]
 
                 for var in VARIABLES:
                     rwrf_name, modifier = self.lexicon[var]
+                    if rwrf_name not in ds.variables:
+                        logger.warning(
+                            f"Key '{rwrf_name}' not found in rwrf {nc_path}, skipping {rwrf_name} .npz conversion"
+                        )
+                        continue
                     if ds.variables[rwrf_name].ndim == 3:
                         data = ds.variables[rwrf_name][:]
                     else:
@@ -191,7 +198,7 @@ class RWRF:
 
         except Exception as e:
             logger.error(f"Error processing file {nc_path}: {e}")
-            raise e
+            return
 
     def _save_variable_npz(
         self,
@@ -229,10 +236,10 @@ class RWRF:
                 return
 
             np.savez(out_path, **{variable_id: data}, lat=lat, lon=lon, times=times)
-            logger.info(f"Successfully saved {out_path}")
+            logger.debug(f"Successfully saved {out_path}")
         except Exception as e:
             logger.error(f"Failed to save NPZ file {out_path}: {e}")
-            raise e
+            return
 
     def _check_exists(self, date_str: str, hr_str: str) -> bool:
         """Checks if the NPZ file for the given date and hour already exists.
@@ -257,14 +264,14 @@ class RWRF:
         for var in VARIABLES:
             fn = f"{var}_{date_str}{hr_str}.npz"
             out_path = self.npz_folder / fn
-            logger.info(f"Checking existence of {out_path}")
+            logger.debug(f"Checking existence of {out_path}")
             if not out_path.exists():
                 missing_vars.append(var)
         if not missing_vars:
-            logger.info(f"All NPZ files exist for {date_str} {hr_str}")
+            logger.info(f"All NPZ files exist for {date_str} {hr_str}") # change to debug level?
             return True
         else:
-            logger.info(f"Missing NPZ files for {date_str} {hr_str}: {missing_vars}")
+            logger.info(f"Missing NPZ files for {date_str} {hr_str}: {missing_vars}") # change to debug level?
             return False
     
     @property

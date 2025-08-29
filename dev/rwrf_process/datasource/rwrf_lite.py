@@ -32,7 +32,6 @@ class RWRFLite:
         config_src: str,
         qpepre_src: str = CONFIG.qpepre,
         rwrf_src: str = CONFIG.rwrf,
-        verbose: bool = True,
         overwrite: bool = False,
     ):
         self.rwrf_qpepre_processor = RWRFQPEPREProcessor(
@@ -41,7 +40,7 @@ class RWRFLite:
         self.rwrf = RWRF(
             nc_folder=tmp_src,
             npz_folder="../data/cache/rwrf",
-            verbose=True,
+            overwrite=overwrite,
         )
         with open(config_src, "r") as f:
             self.cfg_mod = yaml.safe_load(f)
@@ -69,21 +68,22 @@ class RWRFLite:
         for date_str in date_strs:
             for hr_str in hr_strs:
                 if self.rwrf._check_exists(date_str, hr_str):
-                    logger.info(
+                    logger.debug(
                         f"Converted npz files already exists for RWRF  {date_str} {hr_str}, skipping conversion."
                     )
                     continue
 
-                logger.info(
+                logger.debug(
                     f"Queueing RWRF-QPEPRE processing for {date_str} {hr_str}..."
                 )
                 self.rwrf_qpepre_processor._process(date_str, hr_str)
-                logger.info("Converting RWRF NetCDF to NPZ")
-                nc_path = self.get_cropped_path(date_str, hr_str)
+                logger.debug("Converting RWRF NetCDF to NPZ")
+                nc_path = self.get_rwrf_path(date_str, hr_str) # if nc file doesn't have its corresponding qpepre file will just return original nc file path (doesn't have .nc suffix)
                 self.rwrf.convert_to_npz(nc_path)
-                self.remove_temp_files(nc_path, remove_parent=True, force_parent=True)
+                if nc_path.suffix == ".nc":
+                    self.remove_temp_files(nc_path, remove_parent=True, force_parent=True)
             
-    def get_cropped_path(self, date_str: str, hr_str: str) -> pathlib.Path:
+    def get_rwrf_path(self, date_str: str, hr_str: str) -> pathlib.Path:
         """Constructs the path to the NetCDF file for a given date and hour.
         Parameters
         ----------
@@ -97,8 +97,11 @@ class RWRFLite:
         str
             The path to the NetCDF file for the specified date and hour.
         """
-        _, new_path = self.rwrf_qpepre_processor._get_rwrf_paths(date_str, hr_str)
+        org_path, new_path = self.rwrf_qpepre_processor._get_rwrf_paths(date_str, hr_str)
         cropped_path = new_path.replace("qpepre.nc", "cropped_qpepre.nc")
+        if not os.path.exists(cropped_path):
+            logger.warning(f"Processed RWRF-QPEPRE file {cropped_path} doesn't exist, using original RWRF file {org_path}")
+            return pathlib.Path(org_path)
 
         return pathlib.Path(cropped_path)
     
@@ -123,7 +126,7 @@ class RWRFLite:
         else:
             try:
                 nc_path.unlink()  # os.remove works too, but Path is cleaner
-                logger.info("Removed temporary file: %s", nc_path)
+                logger.debug("Removed temporary file: %s", nc_path)
             except Exception as e:
                 logger.error("Error removing temporary file %s: %s", nc_path, e)
                 raise
@@ -133,10 +136,10 @@ class RWRFLite:
             try:
                 if force_parent:
                     shutil.rmtree(parent)
-                    logger.info("Removed parent directory recursively: %s", parent)
+                    logger.debug("Removed parent directory recursively: %s", parent)
                 else:
                     parent.rmdir()  # only succeeds if the directory is empty
-                    logger.info("Removed empty parent directory: %s", parent)
+                    logger.debug("Removed empty parent directory: %s", parent)
             except FileNotFoundError:
                 logger.warning("Parent directory not found, skipping: %s", parent)
             except OSError as e:

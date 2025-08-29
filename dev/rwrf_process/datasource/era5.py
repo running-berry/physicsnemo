@@ -32,13 +32,11 @@ class ERA5:
         nc_folder: str,
         error_folder: str,
         npz_folder: str,
-        verbose: bool = True,
         overwrite: bool = False,
     ):
         self.nc_folder = pathlib.Path(nc_folder)
         self.error_folder = pathlib.Path(error_folder)
         self.npz_folder = pathlib.Path(npz_folder)
-        self._verbose = verbose
         self._overwrite = overwrite
 
         if not self.nc_folder.is_dir():
@@ -80,14 +78,17 @@ class ERA5:
                     logger.error(f"Filename format not recognized: {basename}")
                     return
                 variable = parts[0]
-                # parse variable if kind of pressure levels
+                
+                # parse variable if kind of pressure level variable
+                is_pres_lvl_var = False
                 pressure_level_pattern = r"^(u|v|z|t|q)(\d+)$"
                 if (
                     variable != "u10"
                     and variable != "v10"
                     and re.match(pressure_level_pattern, variable)
                 ):
-                    variable = "pressure_level"
+                    variable = parts[0][0] # e.g. u1000 -> u, v250 -> v
+                    is_pres_lvl_var = True
                 date_str = parts[1]
 
                 for key in ["latitude", "longitude", "valid_time", variable]:
@@ -99,7 +100,7 @@ class ERA5:
                 lat = ds.variables["latitude"][:]
                 lon = ds.variables["longitude"][:]
                 times = ds.variables["valid_time"][:]
-                data = ds.variables[variable][:]
+                data = ds.variables[variable][:] if not is_pres_lvl_var else ds.variables[variable][:, 0, :, :]
                 # revert variable name if needed for saving .npz
                 if variable == "tp":
                     variable = "qpepre"
@@ -121,7 +122,7 @@ class ERA5:
         out_path = self.npz_folder / fn
 
         if not self._overwrite and out_path.exists():
-            logger.info(f"File exists, skipping: {out_path}")  #comment out to speed up
+            logger.debug(f"File exists, skipping: {out_path}")  #comment out to speed up
             return
 
         try:
@@ -131,25 +132,25 @@ class ERA5:
             logger.error(f"Failed to save NPZ file {out_path}: {e}")
             return
 
-    @property
-    def info(self) -> None:
+    def info(self, nc_file: str | None = None) -> None:
         """Prints info about the data source."""
-        try:
+        if nc_file == None:
             nc_files = list(self.nc_folder.rglob("*.nc"))
             if not nc_files:
                 logger.warning("No NetCDF files found to read info from.")
                 return
-
-            first_nc = nc_files[0]
+            nc_file = nc_files[0] # reads the first nc file
+        
+        try:
             with xr.open_dataset(
-                first_nc, decode_coords=True, mask_and_scale=False
+                nc_file, decode_coords=True, mask_and_scale=False
             ) as ds:
                 logger.debug("ERA5 dataset global attributes:")
                 for k, v in ds.attrs.items():
                     logger.debug(f"{k}: {v}")
 
                 logger.debug("ERA5 dataset dimensions:")
-                for k, v in ds.dims.items():
+                for k, v in ds.sizes.items():
                     logger.debug(f"{k}: {v}")
 
                 logger.debug("ERA5 dataset variables:")
