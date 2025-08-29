@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 import sys
 from datetime import datetime
 
@@ -9,33 +9,35 @@ import xarray as xr
 import yaml
 import zarr
 
+
 # Configure logging
 def setup_logger():
     """Setup logger with timestamp and process information."""
     logger = logging.getLogger(__name__)
-    
+
     # Remove existing handlers to avoid duplicates
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Create formatter
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
-    
+
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    
+
     # File handler
     # log_file = f"create_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     # file_handler = logging.FileHandler(log_file)
     # file_handler.setFormatter(formatter)
     # logger.addHandler(file_handler)
-    
+
     # logger.info(f"Logging initialized. Log file: {log_file}")
     return logger
+
 
 logger = setup_logger()
 
@@ -66,6 +68,7 @@ experiment_name = cfg_mod["exp_train_zarrs"][0]
 
 
 def create_dummy_arr(
+    fname,
     dt,
     data_path: str,
     data_var: str,
@@ -82,9 +85,10 @@ def create_dummy_arr(
     logger.debug(f"Creating dummy array for {data_var} at {dt}")
 
     # build the filename for this dt
-    yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
-    fn = f"{data_var}_{yy}{mm}{dd}{hh}.npz"
-    dt_path = os.path.join(data_path, fn)
+    # yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
+    # fn = f"{data_var}_{yy}{mm}{dd}{hh}.npz"
+    # dt_path = os.path.join(data_path, fn)
+    dt_path = f"{cache_base}/dummy/dummy_{fname}.npz"
 
     logger.debug(f"Using template file: {dt_path}")
 
@@ -129,12 +133,12 @@ def process_invariants(
     logger.info("=" * 50)
     logger.info("PROCESSING INVARIANTS")
     logger.info("=" * 50)
-    
+
     # Create invariants directory
     invariant_folder = f"{data_base}/invariants"
     os.makedirs(invariant_folder, exist_ok=True)
     logger.info(f"Created invariants directory: {invariant_folder}")
-    
+
     # Use rwrf cache path for invariants
     cache_path = f"{cache_base}/rwrf"
     logger.info(f"Using cache path: {cache_path}")
@@ -147,10 +151,12 @@ def process_invariants(
     invariant_arr = None
     lon_grid = None
     lat_grid = None
-    
+
     for var in invariants:
         logger.info(f"Processing invariant/{len(invariants)}: {var}")
-        yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
+        yy, mm, dd, hh = (
+            np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
+        )
         dt_path = os.path.join(cache_path, f"{var}_{yy}{mm}{dd}{hh}.npz")
         print(f"Processing invariant: {dt_path}")
 
@@ -176,11 +182,15 @@ def process_invariants(
         # concatenate data
         if invariant_arr is None:  # first iteration only
             invariant_arr = dt_data.copy()
-            logger.debug(f"Initialized invariant array with shape: {invariant_arr.shape}")
+            logger.debug(
+                f"Initialized invariant array with shape: {invariant_arr.shape}"
+            )
         else:
             # concatenate along axis=0 (channel)
             invariant_arr = np.concatenate((invariant_arr, dt_data), axis=0)
-            logger.debug(f"Concatenated invariant array, new shape: {invariant_arr.shape}")
+            logger.debug(
+                f"Concatenated invariant array, new shape: {invariant_arr.shape}"
+            )
 
     # Create xarray dataset for invariants
     year_data = xr.Dataset(
@@ -232,7 +242,7 @@ def process_period(
     logger.info("=" * 50)
     logger.info(f"Period: {start_date} to {end_date}")
     logger.info(f"Variables: {channel_vars_dict[fname]}")
-    
+
     folder_path = f"{data_base}/{fname}/stats"
     os.makedirs(folder_path, exist_ok=True)
     logger.info(f"Created stats directory: {folder_path}")
@@ -253,6 +263,7 @@ def process_period(
     logger.info("Creating dummy data template...")
 
     dummy_data, dummy_lon_grid, dummy_lat_grid, dummy_times = create_dummy_arr(
+        fname,
         datetime_array[0],
         cache_path,
         channel_vars_dict["dummy"],
@@ -296,8 +307,9 @@ def process_period(
                 missing_file = f"{yy}-{mm}-{dd} {hh}:00"
                 missing_data.append(missing_file)
                 missing_files += 1
-                logger.warning(f"Missing file, using dummy data: {os.path.basename(dt_path)}")
-
+                lon_grid = dummy_lon_grid
+                lat_grid = dummy_lat_grid
+                logger.warning("Missing file, using dummy data")
 
             # concatenate data
             if channel_arr is None:  # first iteration only
@@ -319,7 +331,9 @@ def process_period(
     logger.info(f"File processing summary:")
     logger.info(f"  - Successfully processed: {processed_files}")
     logger.info(f"  - Missing files (dummy data used): {missing_files}")
-    logger.info(f"  - Total files expected: {total_hours * len(channel_vars_dict[fname])}")
+    logger.info(
+        f"  - Total files expected: {total_hours * len(channel_vars_dict[fname])}"
+    )
 
     # compute mean and std over time, latitude & longitude → leaves (n_chan,)
     # data_arr shape is (n_time, n_chan, ny, nx)
@@ -336,14 +350,14 @@ def process_period(
 
     means = means.astype(np.float32)
     stds = stds.astype(np.float32)
-    
-    # Only save stats for training 
+
+    # Only save stats for training
     if not is_validation:
         np.save(f"{folder_path}/means.npy", means)
         np.save(f"{folder_path}/stds.npy", stds)
 
     print(f"Data shape: {data_arr.shape}")
-    
+
     # Create xarray dataset
     year_data = xr.Dataset(
         {
@@ -408,32 +422,34 @@ def main():
         help=f"Validation end date YYYY/MM/DD (default {valid_datetime_last})",
     )
     parser.add_argument(
-        "--cache-base", default=cache_base, help=f"Cache base path (default {cache_base})"
+        "--cache-base",
+        default=cache_base,
+        help=f"Cache base path (default {cache_base})",
     )
     parser.add_argument(
         "--data-base", default=data_base, help=f"Data base path (default {data_base})"
     )
     parser.add_argument(
-        "--process-invariants", 
+        "--process-invariants",
         action="store_true",
-        help="Process invariant data (land-sea mask, orography)"
+        help="Process invariant data (land-sea mask, orography)",
     )
 
     args = parser.parse_args()
 
     logger.info(f"train-start: {args.train_start}")
     logger.info(f"train-end: {args.train_end}")
-    
+
     channel_vars_dict = channel_vars
 
     # Process invariants if requested
     # if args.process_invariants:
     process_invariants(
-        cache_base=args.cache_base,
-        data_base=args.data_base,
-        experiment_name=experiment_name,
-        start_date=args.train_start,
-    )
+         cache_base=args.cache_base,
+         data_base=args.data_base,
+         experiment_name=experiment_name,
+         start_date=args.train_start,
+     )
 
     # process training period
     for fname in ["HighRes", "LowRes"]:
@@ -466,3 +482,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,19 +1,17 @@
-import asyncio
 import logging
 import pathlib
 import re
+import shutil
 
-import nest_asyncio
 import netCDF4 as nc
 import numpy as np
 import xarray as xr
-from tqdm.asyncio import tqdm
 
 logger = logging.getLogger(__name__)
 
 
 class ERA5:
-    """Local ERA5 datasource that reads NetCDF files asynchronously and saves them
+    """Local ERA5 datasource that reads NetCDF files synchronously and saves them
     to NPZ format. The output folder acts as a cache.
 
     Parameters
@@ -32,11 +30,13 @@ class ERA5:
     def __init__(
         self,
         nc_folder: str,
+        error_folder: str,
         npz_folder: str,
         verbose: bool = True,
         overwrite: bool = False,
     ):
         self.nc_folder = pathlib.Path(nc_folder)
+        self.error_folder = pathlib.Path(error_folder)
         self.npz_folder = pathlib.Path(npz_folder)
         self._verbose = verbose
         self._overwrite = overwrite
@@ -50,29 +50,17 @@ class ERA5:
 
     def __call__(self) -> None:
         """Function to get data"""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            nest_asyncio.apply()
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        self.process_files()
 
-        loop.run_until_complete(self.process_files())
-
-    async def process_files(self) -> None:
-        """Asynchronously converts all NetCDF files in the folder to NPZ format."""
+    def process_files(self) -> None:
+        """Synchronously converts all NetCDF files in the folder to NPZ format."""
         nc_files = list(self.nc_folder.rglob("*.nc"))
-        tasks = [self.convert_to_npz(nc_file) for nc_file in nc_files]
+        logger.info("Converting ERA5 NetCDF to NPZ")
+        for nc_file in nc_files:
+            self.convert_to_npz(nc_file)
 
-        await tqdm.gather(
-            *tasks,
-            desc="Converting ERA5 NetCDF to NPZ",
-            disable=(not self._verbose),
-        )
-
-    async def convert_to_npz(self, nc_path: pathlib.Path) -> None:
+    def convert_to_npz(self, nc_path: pathlib.Path) -> None:
         """Loads a single NetCDF file, extracts data, and saves it as an NPZ file.
-        This is a coroutine and can be run concurrently.
 
         Parameters
         ----------
@@ -84,57 +72,56 @@ class ERA5:
             return
 
         try:
-            ds = nc.Dataset(nc_path)
+            with nc.Dataset(nc_path) as ds:
+                # Try to extract variable name from filename: {variable}_{YYYY}{MM}{DD}{HH}.nc
+                basename = nc_path.stem
+                parts = basename.split("_")
+                if len(parts) < 2:
+                    logger.error(f"Filename format not recognized: {basename}")
+                    return
+                variable = parts[0]
+                # parse variable if kind of pressure levels
+                pressure_level_pattern = r"^(u|v|z|t|q)(\d+)$"
+                if (
+                    variable != "u10"
+                    and variable != "v10"
+                    and re.match(pressure_level_pattern, variable)
+                ):
+                    variable = "pressure_level"
+                date_str = parts[1]
+
+                for key in ["latitude", "longitude", "valid_time", variable]:
+                    if key not in ds.variables:
+                        raise KeyError(
+                            f"Key '{key}' not found in dataset variables: {list(ds.variables.keys())}"
+                        )
+
+                lat = ds.variables["latitude"][:]
+                lon = ds.variables["longitude"][:]
+                times = ds.variables["valid_time"][:]
+                data = ds.variables[variable][:]
+                # revert variable name if needed for saving .npz
+                if variable == "tp":
+                    variable = "qpepre"
+                else:
+                    variable = parts[0]
+
         except OSError as e:
             logger.error(f"Could not open NetCDF file {nc_path}: {e}")
-            raise e
-
-        try:
-            # Try to extract variable name from filename: {variable}_{YYYY}{MM}{DD}{HH}.nc
-            basename = nc_path.stem
-            parts = basename.split("_")
-            if len(parts) < 2:
-                logger.error(f"Filename format not recognized: {basename}")
-                ds.close()
-                return
-            variable = parts[0]
-            # parse variable if kind of pressure levels
-            pressure_level_pattern = r"^(u|v|z|t|q)(\d+)$"
-            if (
-                variable != "u10"
-                and variable != "v10"
-                and re.match(pressure_level_pattern, variable)
-            ):
-                variable = "pressure_level"
-            date_str = parts[1]
-
-            for key in ["latitude", "longitude", "valid_time", variable]:
-                if key not in ds.variables:
-                    raise KeyError(
-                        f"Key '{key}' not found in dataset variables: {list(ds.variables.keys())}"
-                    )
-
-            lat = ds.variables["latitude"][:]
-            lon = ds.variables["longitude"][:]
-            times = ds.variables["valid_time"][:]
-            data = ds.variables[variable][:]
-            # revert variable name if needed for saving .npz
-            if variable == "tp":
-                variable = "qpepre"
-            else:
-                variable = parts[0]
-
+            # move to error folder
+            shutil.move(nc_path, self.error_folder / nc_path.name)
+            return
         except Exception as e:
             logger.error(f"Error processing file {nc_path}: {e}")
-            raise e
-        finally:
-            ds.close()
+            # move to error folder
+            shutil.move(nc_path, self.error_folder / nc_path.name)
+            return
 
         fn = f"{variable}_{date_str}.npz"
         out_path = self.npz_folder / fn
 
         if not self._overwrite and out_path.exists():
-            logger.info(f"File exists, skipping: {out_path}")
+            logger.info(f"File exists, skipping: {out_path}")  #comment out to speed up
             return
 
         try:
@@ -142,7 +129,7 @@ class ERA5:
             logger.debug(f"Successfully saved {out_path}")
         except Exception as e:
             logger.error(f"Failed to save NPZ file {out_path}: {e}")
-            raise e
+            return
 
     @property
     def info(self) -> None:
@@ -172,3 +159,4 @@ class ERA5:
         except Exception as e:
             logger.error(f"Could not read info from NetCDF file: {e}")
             raise e
+

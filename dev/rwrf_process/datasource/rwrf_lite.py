@@ -10,14 +10,26 @@ from utils import CONFIG
 
 logger = logging.getLogger(__name__)
 
-with open("../../examples/weather/stormcast/config/dataset/small.yaml", "r") as f:
-    cfg_mod = yaml.safe_load(f)
+def create_datestrs(date_list):
+    """
+    date_list: ["YYYY/MM/DD", "YYYY/MM/DD"]
+    returns:   ["YYYY/MM/DD", "YYYY/MM/DD", ...] inclusive
+    """
+    fmt = "%Y/%m/%d"
+    start = datetime.strptime(date_list[0], fmt).date()
+    end   = datetime.strptime(date_list[1], fmt).date()
 
+    if start > end:
+        start, end = end, start
+
+    return [(start + timedelta(days=i)).strftime(fmt)
+            for i in range((end - start).days + 1)]
 class RWRFLite:
     def __init__(
         self,
         tmp_src: str,
         npz_folder: str,
+        config_src: str,
         qpepre_src: str = CONFIG.qpepre,
         rwrf_src: str = CONFIG.rwrf,
         verbose: bool = True,
@@ -30,32 +42,17 @@ class RWRFLite:
             nc_folder=tmp_src,
             npz_folder="../data/cache/rwrf",
             verbose=True,
-    )
+        )
+        with open(config_src, "r") as f:
+            self.cfg_mod = yaml.safe_load(f)
+
     def __call__(self, *args, **kwds):
-        """Generate all train/valid dates and process every hour (00–23)."""
-        def _expand_range(start_str: str, end_str: str) -> list[str]:
-            start = datetime.strptime(start_str, "%Y/%m/%d")
-            end   = datetime.strptime(end_str,   "%Y/%m/%d")
-            return [
-                (start + timedelta(days=d)).strftime("%Y/%m/%d")
-                for d in range((end - start).days + 1)
-            ]
-
-        # 1) read ranges from config (each is [start, end])
-        train_start, train_end = cfg_mod["train_dates"][0], cfg_mod["train_dates"][-1]
-        valid_start, valid_end = cfg_mod["valid_dates"][0], cfg_mod["valid_dates"][-1]
-
-        # 2) expand to full date lists (inclusive)
-        train_dates = _expand_range(train_start, train_end)
-        valid_dates = _expand_range(valid_start, valid_end)
-
-        # 3) combine + sort + dedupe
-        date_strs = sorted(set(train_dates + valid_dates))
-        logger.info(f"dates are: {date_strs}")
-        # 4) run
-        self.process_files_from_date_list(date_strs, CONFIG.hr_strs)
+        """Function to get data"""
+        train_date_strs = create_datestrs(self.cfg_mod["train_dates"])
+        valid_date_strs = create_datestrs(self.cfg_mod["valid_dates"])
+        date_strs = train_date_strs + valid_date_strs 
+        self.process_files_from_date_list(date_strs, CONFIG.hr_strs) 
     
-
     def process_files_from_date_list(
         self, date_strs: list[str], hr_strs: list[str]
     ) -> None:
@@ -155,8 +152,9 @@ if __name__ == "__main__":
     rwrf_lite = RWRFLite(
         qpepre_src=CONFIG.qpepre,
         rwrf_src=CONFIG.rwrf,
+        config_src="../../examples/weather/stormcast/config/dataset/small.yaml",
         tmp_src="../data/tmp",
-        npz_folder="../data/cache/rwrf/train",
+        npz_folder="../data/cache/rwrf",
         verbose=True,
     )
     rwrf_lite()

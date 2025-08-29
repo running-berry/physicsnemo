@@ -11,8 +11,11 @@ def make_cache(rwrf_dir):
         ["python", "nc_to_npz.py"],
         cwd=rwrf_dir   # this runs the command as if you had cd'ed there
     )
-def create_data():
-    subprocess.run(["python", "create_data.py"])
+def create_data(rwrf_dir):
+    subprocess.run(
+        ["python", "create_data.py"],
+        cwd=rwrf_dir
+    )
 
 def train(stormcast_dir, log_dir):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -72,6 +75,7 @@ def reconfig(cfgp, plan_path, cfg_path, stormcast_path):
     cfg_set["total_train_steps"] = test["total_train_steps"]
     cfg_set["validation_freq"] = test["validation_freq"]
     cfg_set["checkpoint_freq"] = test["checkpoint_freq"]
+    cfg_set["print_progress_freq"] = test["print_progress_freq"]
     cfg_set["validation_plot_variables"] = test["validation_plot_variables"]
     cfg_set["loss"] = test["loss"]
 
@@ -111,7 +115,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     make_cache(args.RWRF_DIR)
-    create_data()
+    create_data(args.RWRF_DIR)
     train(args.STORMCAST_DIR, args.LOG_DIR)
 
     # Save progress

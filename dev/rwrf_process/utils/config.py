@@ -6,6 +6,7 @@ class Config:
         self.dataset_paths = config_dict["dataset_paths"]
         self.rwrf = self.dataset_paths["rwrf"]
         self.era5 = self.dataset_paths["era5"]
+        self.era5_deprecated = self.dataset_paths["era5_deprecated"]
         # self.era5_npz = self.dataset_paths["era5_npz"]
         # self.rwrf_npz = self.dataset_paths["rwrf_npz"]
         self.qpepre = self.dataset_paths["qpepre"]

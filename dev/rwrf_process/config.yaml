@@ -1,10 +1,15 @@
 dataset_paths:
-  #rwrf: "/mnt/ncdr/RWRF"
+  #rwrf: "/mnt/ncdr/data/RWRF"
   #era5: "/mnt/ncdr/era5"
   #qpepre: "/mnt/ncdr/data/obs_1hrRain/2019"
-  rwrf: "/mnt/data/rwrf"
-  era5: "/mnt/data/era5/train"
-  qpepre: "/mnt/data/qpepre"
+  #era5_deprecated: "/mnt/ncdr/deprecated"
+  rwrf: "/mnt/NCDR_mock/data/RWRF"
+  era5: "/mnt/NCDR_mock/era5"
+  qpepre: "/mnt/NCDR_mock/data/obs_1hrRain/2019"
+  era5_deprecated: "/mnt/NCDR_mock/deprecated"
+  #rwrf: "/mnt/data/rwrf"
+  #era5: "/mnt/data/era5/train"
+  #qpepre: "/mnt/data/qpepre"
 
 # dates for dataset
 # date_strs: ["2019/08/03"]
@@ -12,8 +17,9 @@ hr_strs: ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"
   "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
 
 invariants: ["lsm", "orog"]
-var_highres: ["t2m"]
-var_lowres: ["t2m"]
+var_highres: ["t2m", "u10", "v10", "qpepre"]
+var_lowres: ["t2m", "t925", "t1000", "u10", "u200", "u250", "u500", "u700", "u850",
+  "u925", "u1000", "v200", "v250", "v500", "v700", "v850", "v925", "v1000"]
 var_dummy: "t2m"
 lon_min: 121.00
 lon_max: 125.00
