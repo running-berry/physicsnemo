@@ -3,16 +3,16 @@ source .env
 #SBATCH -J job_name            # set job name
 #SBATCH -N 1                   # number of nodes
 #SBATCH --ntasks-per-node=1    # number of tasks per node
-#SBATCH -p <Group Name>     # need partition name
+#SBATCH -p NCDR_StormCast      # need partition name
 #SBATCH -o %x.%j.out           # output log
 #SBATCH -e %x.%j.err           # error log
 #SBATCH --gpus-per-node=1      # number of GPU per node
 # job runtime limit
 #SBATCH -t 01:00:00
 
-HOMEDIR=/mnt/home/usr  # replace with actual home directory
-SQSH=/<container>.sqsh  # replace with actual SQSH file
-PARTITION=<Group Name> # replace with actual partition name
+HOMEDIR=/mnt/home/dczy-cmla-8ec31f  # replace with actual home directory
+SQSH=/physicsnemo_25.03_02.sqsh  # replace with actual SQSH file
+PARTITION=NCDR_StormCast  # replace with actual partition name
 NODE_ID=cnode3-003
 
 echo -e "Running on hosts: $(echo $(scontrol show hostname))"

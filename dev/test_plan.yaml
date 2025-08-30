@@ -3,21 +3,44 @@ tests:
     # config.yaml && dataset/small.yaml
     exp_train_zarrs: ["train"]
     invariants: ["lsm", "orog"]
-    var_highres: ["t2m"]
-    var_lowres: ["t2m"]
+    var_highres: ["t2m", "u10", "v10", "qpepre"]
+    var_lowres: ["t2m", "t925", "t1000", "u10", "u200", "u250", "u500", "u700", "u850",
+      "u925", "u1000", "v200", "v250", "v500", "v700", "v850", "v925", "v1000"]
     lon_min: 121.00
     lon_max: 125.00
     lat_min: 21.00
     lat_max: 25.00
-    train_dates: ["2019/08/03", "2019/08/03"]
-    valid_dates: ["2019/08/04", "2019/08/04"]
+    train_dates: ["2019/08/01", "2019/08/31"]
+    valid_dates: ["2019/08/01", "2019/08/31"]
     # training/small.yaml
     total_train_steps: 160
     checkpoint_freq: 80
-    validation_freq: 5
-    validation_plot_variables: ["t2m"]
+    print_progress_freq: 20
+    validation_freq: 20
+    validation_plot_variables: ["t2m", "u10", "v10", "qpepre"]
+    loss: 'regression'
+  - name: test1
+    # config.yaml && dataset/small.yaml
+    exp_train_zarrs: ["train"]
+    invariants: ["lsm", "orog"]
+    var_highres: ["t2m", "u10", "v10", "qpepre"]
+    var_lowres: ["t2m", "u10", "u200", "u250", "u500", "u700", "u850", "u925", "u1000",
+      "v200", "v250", "v500", "v700", "v850", "v925", "v1000"]
+    # std errors: t925, t1000
+    lon_min: 121.00
+    lon_max: 125.00
+    lat_min: 21.00
+    lat_max: 25.00
+    train_dates: ["2019/08/01", "2019/08/31"]
+    valid_dates: ["2019/08/01", "2019/08/31"]
+    # training/small.yaml
+    total_train_steps: 160
+    checkpoint_freq: 80
+    print_progress_freq: 20
+    validation_freq: 20
+    validation_plot_variables: ["t2m", "u10", "v10", "qpepre"]
     loss: 'regression'
 
 progress:
-  complete: 'test0'
+  complete: 'test1'
   next_test:

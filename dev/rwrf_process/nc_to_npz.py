@@ -5,7 +5,7 @@ from datasource import ERA5, RWRF, RWRFQPEPREProcessor, RWRFLite
 from utils import CONFIG
 
 logging.basicConfig(
-    level=logging.INFO, # change to DEBUG for detailed logs
+    level=logging.DEBUG, # change to DEBUG for detailed logs
     format="%(asctime)s %(levelname)s %(name)s:%(lineno)d: %(message)s",
 )
 logger = logging.getLogger(__name__)

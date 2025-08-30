@@ -2,7 +2,7 @@
 #SBATCH -J job_name            # set job name
 #SBATCH -N 1                   # number of nodes
 #SBATCH --ntasks-per-node=1    # number of tasks per node
-#SBATCH -p <Group Name>     # partition name
+#SBATCH -p NCDR_StormCast      # partition name
 #SBATCH -o %x.%j.out           # output log
 #SBATCH -e %x.%j.err           # error log
 #SBATCH --gpus-per-node=1      # number of GPUs per node

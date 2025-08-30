@@ -9,8 +9,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logging.info("Process started.")
 
 while(flag):
-   #if time.time() - start_time > 10800:
-   if time.time() - start_time > 100:
+   if time.time() - start_time > 28800: #8hr
        print("passed, stopping the process.")
        flag = False
        break
