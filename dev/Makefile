@@ -60,7 +60,9 @@ output:
 	mv $(stormcast_dir)/rundir/ $(output_dir)/$(timestamp)/ || true && \
     mv $(data_dir)/HighRes $(output_dir)/$(timestamp)/ || true && \
     mv $(data_dir)/LowRes $(output_dir)/$(timestamp)/ || true && \
+    mv $(data_dir)/invariants $(output_dir)/$(timestamp)/ || true && \
 	cp $(rwrf_dir)/config.yaml $(output_dir)/$(timestamp)/ || true 
+	cp $(rwrf_dir)../test_plan.yaml $(output_dir)/$(timestamp)/ || true 
 
 run:
 # 	$(MAKE) pull
@@ -68,7 +70,9 @@ run:
 # 	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
-	#$(MAKE) make_data
-	#$(MAKE) train
+#	$(MAKE) make_data
+#	$(MAKE) train
 	$(MAKE) config_train
 	$(MAKE) output
+
+rs_run: reset run
