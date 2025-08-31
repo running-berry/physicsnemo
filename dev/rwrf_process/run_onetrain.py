@@ -43,6 +43,8 @@ def reconfig(cfgp, plan_path, cfg_path, stormcast_path):
     else:
         print("[warn] No next test available in the test plan.")
         return (None, None)
+    
+    dir_path = os.path.dirname(cfg_path)
    
     # Update config.yaml with test parameters 
     cfg_set = cfgp.load(cfg_path)
@@ -78,12 +80,28 @@ def reconfig(cfgp, plan_path, cfg_path, stormcast_path):
     cfg_set["print_progress_freq"] = test["print_progress_freq"]
     cfg_set["validation_plot_variables"] = test["validation_plot_variables"]
     cfg_set["loss"] = test["loss"]
+    if cfg_set["loss"] == 'edm':
+        _revise_cfg_diff(cfgp, dir_path, stormcast_path, test["reg_weights"])
 
     cfgp.dump(cfg_set, cfg_path)
 
     test_name = test.get("name")
     print(f"Configuration updated for {test_name}.")
     return idx, test_name
+
+def _revise_cfg_diff(cfgp, dir_path, stormcast_path, reg_weights_path):
+    reg_weights_path = os.path.join(dir_path, "../../", reg_weights_path) 
+    # Update training/small.yaml with pretrained regression model
+    cfg_path = f"{stormcast_path}/config/diffusion.yaml" 
+    cfg_set = cfgp.load(cfg_path)
+    cfg_set["model"]["regression_weights"] = reg_weights_path
+    cfgp.dump(cfg_set, cfg_path)
+
+    # Update model/stormcast.yaml with pretrained regression model
+    cfg_path = f"{stormcast_path}/config/model/stormcast.yaml" 
+    cfg_set = cfgp.load(cfg_path)
+    cfg_set["regression_weights"] = reg_weights_path
+    cfgp.dump(cfg_set, cfg_path)
 
 def save_progress_config(cfgp, test_id, test_name, plan_path):
     test_plan = cfgp.load(plan_path)
@@ -114,7 +132,7 @@ if __name__ == "__main__":
     if test_id is None:
         sys.exit(0)
 
-    make_cache(args.RWRF_DIR)
+    #make_cache(args.RWRF_DIR)
     create_data(args.RWRF_DIR)
     train(args.STORMCAST_DIR, args.LOG_DIR)
 

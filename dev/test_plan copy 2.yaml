@@ -19,9 +19,8 @@ tests:
     print_progress_freq: 20
     validation_freq: 20
     validation_plot_variables: ["t2m", "u10", "v10", "qpepre"]
-    loss: 'edm'
-    reg_weights: 'dev/output/20250830_204522/rundir/stormcast-training/0/checkpoints_regression/StormCastUNet.0.160.mdlus'
-
+    loss: 'regression'
+    
 
 progress:
   complete: 'test0'
