@@ -132,7 +132,7 @@ if __name__ == "__main__":
     if test_id is None:
         sys.exit(0)
 
-    #make_cache(args.RWRF_DIR)
+    make_cache(args.RWRF_DIR)
     create_data(args.RWRF_DIR)
     train(args.STORMCAST_DIR, args.LOG_DIR)
 

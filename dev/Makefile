@@ -48,6 +48,10 @@ make_cache:
 	cd $(rwrf_dir) && \
 	python nc_to_npz.py
 
+make_cache_month:
+	cd $(rwrf_dir) && \
+	python nc_to_npz.py --month
+
 reset:
 	cd $(rwrf_dir) && \
 	python run_reset.py \
@@ -67,7 +71,7 @@ output:
     mv $(data_dir)/HighRes $(output_dir)/$(timestamp)/ || true && \
     mv $(data_dir)/LowRes $(output_dir)/$(timestamp)/ || true && \
     mv $(data_dir)/invariants $(output_dir)/$(timestamp)/ || true && \
-	cp $(rwrf_dir)/../config.yaml $(output_dir)/$(timestamp)/ || true 
+	cp $(rwrf_dir)/config.yaml $(output_dir)/$(timestamp)/ || true 
 	cp $(rwrf_dir)/../test_plan.yaml $(output_dir)/$(timestamp)/ || true 
 
 run:

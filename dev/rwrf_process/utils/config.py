@@ -10,6 +10,7 @@ class Config:
         # self.era5_npz = self.dataset_paths["era5_npz"]
         # self.rwrf_npz = self.dataset_paths["rwrf_npz"]
         self.qpepre = self.dataset_paths["qpepre"]
+        self.cache = self.dataset_paths["cache"]
         # self.date_strs = config_dict["date_strs"]
         self.hr_strs = config_dict["hr_strs"]
 

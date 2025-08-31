@@ -7,6 +7,7 @@ dataset_paths:
   era5: "/mnt/NCDR_mock/era5"
   qpepre: "/mnt/NCDR_mock/data/obs_1hrRain/2019"
   era5_deprecated: "/mnt/NCDR_mock/deprecated"
+  cache: "/mnt/data/cache_mock"
   #rwrf: "/mnt/data/rwrf"
   #era5: "/mnt/data/era5/train"
   #qpepre: "/mnt/data/qpepre"

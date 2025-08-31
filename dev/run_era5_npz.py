@@ -5,6 +5,8 @@ from era5 import ERA5
 
 nc_folder = "/mnt/home/dczy-cmla-8ec31f/NCDR_StormCast/era5/v1000/2018"
 npz_folder = "/mnt/home/dczy-cmla-8ec31f/NCDR_StormCast/era5_npz/v1000/2018"
+#npz_folder = "/mnt/NCDR_mock/era5/v1000/2018"
+#npz_folder = "/mnt/data/cache_mock/era5_npz/v1000/2018"
 
 converter = ERA5(nc_folder, npz_folder, overwrite=True)
 converter()

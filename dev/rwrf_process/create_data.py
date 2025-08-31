@@ -8,6 +8,7 @@ import util_extract as u1
 import xarray as xr
 import yaml
 import zarr
+from utils import CONFIG
 
 
 # Configure logging
@@ -63,7 +64,7 @@ train_datetime_last = cfg_mod["train_dates"][-1]
 valid_datetime_start = cfg_mod["valid_dates"][0]
 valid_datetime_last = cfg_mod["valid_dates"][-1]
 
-cache_base = "../data/cache"
+cache_base = CONFIG.cache
 data_base = "../data"
 experiment_name = cfg_mod["exp_train_zarrs"][0]
 
@@ -278,6 +279,7 @@ def process_period(
     data_arr = None
     processed_files = 0
     missing_files = 0
+    cache_path = f"{cache_base}/rwrf/"
 
     for dt in datetime_array:
         channel_arr = None

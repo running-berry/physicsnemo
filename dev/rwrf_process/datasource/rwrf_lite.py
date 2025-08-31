@@ -39,7 +39,7 @@ class RWRFLite:
         )
         self.rwrf = RWRF(
             nc_folder=tmp_src,
-            npz_folder="../data/cache/rwrf",
+            npz_folder=f"{CONFIG.cache}/rwrf",
             overwrite=overwrite,
         )
         with open(config_src, "r") as f:
@@ -157,7 +157,8 @@ if __name__ == "__main__":
         rwrf_src=CONFIG.rwrf,
         config_src="../../examples/weather/stormcast/config/dataset/small.yaml",
         tmp_src="../data/tmp",
-        npz_folder="../data/cache/rwrf",
+        #npz_folder="../data/cache_remote/rwrf",
+        npz_folder=f"{CONFIG.cache}/rwrf",
         verbose=True,
     )
     rwrf_lite()

@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 era5 = ERA5(
     nc_folder=CONFIG.era5,
     error_folder=CONFIG.era5_deprecated,
-    npz_folder="../data/cache/era5/",
+    #npz_folder="../data/cache/era5/",
+    npz_folder=f"{CONFIG.cache}/era5/",
     # overwrite=True, # set to True to overwrite existing npz files
 )
 era5()
@@ -31,7 +32,8 @@ rwrf_lite = RWRFLite(
     rwrf_src=CONFIG.rwrf,
     config_src="../../examples/weather/stormcast/config/dataset/small.yaml",
     tmp_src=tmp_folder,
-    npz_folder="../data/cache/rwrf/",
+    #npz_folder="../data/cache/rwrf/",
+    npz_folder=f"{CONFIG.cache}/rwrf/",
     # overwrite=True, # set to True to overwrite existing npz files
 )
 
