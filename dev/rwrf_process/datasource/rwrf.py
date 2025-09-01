@@ -182,6 +182,7 @@ class RWRF:
                 times = ds.variables["Times"][:]
 
                 for var in VARIABLES:
+                    logger.info(f"converting {var}.nc to npz")
                     rwrf_name, modifier = self.lexicon[var]
                     if rwrf_name not in ds.variables:
                         logger.warning(
@@ -195,6 +196,7 @@ class RWRF:
                         data = ds.variables[rwrf_name][:, PRES_IDX[level], :, :]
                     data = modifier(data)
                     self._save_variable_npz(var, date_str, lat, lon, times, data)
+                    logger.info(f"converting {var}.nc to npz done.")
 
         except Exception as e:
             logger.error(f"Error processing file {nc_path}: {e}")

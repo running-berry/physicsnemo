@@ -2,13 +2,14 @@ import logging
 import os
 import pathlib
 from datetime import datetime, timedelta
+import time
+import csv
 
 import numpy as np
 import regex as re
 from netCDF4 import Dataset
 from scipy.interpolate import griddata
 from utils import CONFIG
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,27 +32,58 @@ class RWRFQPEPREProcessor:
         output_dir: str,
         qpepre_src: str = CONFIG.qpepre,
         rwrf_src: str = CONFIG.rwrf,
+        perf_dir: str | None = None, 
     ):
-        self.qpepre_src = qpepre_src
+        self.qpepre_src = pathlib.Path(qpepre_src)
         self.rwrf_src = rwrf_src
         self.output_dir = output_dir
         pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)  # redundant?
+        
 
     def __call__(self):
-        """Interpolates all QPEPRE files in the source directory into corresponding RWRF datasets."""
+        """
+        Interpolates all QPEPRE files in the source directory into corresponding RWRF datasets.
+        Handles filenames like: qpepre_YYYYMMDDHHMM-YYYYMMDDHHMM_1_h.txt
+        """
         src_path = pathlib.Path(self.qpepre_src)
         qpepre_files = list(src_path.rglob("*.txt"))
+
+        # regex: capture the first 12-digit timestamp after 'qpepre_'
+
+        pat = re.compile(r"qpepre_(\d{12})-\d{12}_1_h(?:\.txt)?$")
+
         for file in qpepre_files:
-            basename = file.stem
-            date = basename.split("_")[1][:-2]
-            date_str = f"{date[:4]}/{date[4:6]}/{date[6:8]}"
-            hr_str = date[-2:]
-            if self._check_exists(date_str, hr_str):
-                logger.debug(
-                    f"RWRF QPEPRE dataset already exists for {date_str} {hr_str}. Skipping."
-                )
+            m = pat.search(file.name)
+            if not m:
+                logger.debug(f"Skip (unrecognized name): {file}")
                 continue
+
+            start_str = m.group(1)      # YYYYMMDDHHMM
+            y, mth, d, hh = start_str[0:4], start_str[4:6], start_str[6:8], start_str[8:10]
+            date_str = f"{y}/{mth}/{d}"
+            hr_str = hh
+
+            if self._check_exists(date_str, hr_str):
+                logger.debug(f"RWRF QPEPRE dataset already exists for {date_str} {hr_str}. Skipping.")
+                continue
+
             self._process(date_str, hr_str)
+
+    def _resolve_qpepre_dir_for_year(self, year: int) -> pathlib.Path | None:
+        """
+        Return the subdirectory under qpepre_src that holds files for `year`.
+        Checks: <root>/<year>/  then  <root>/forai_1hrobs_<year>/
+        Falls back to None if neither exists.
+        """
+        # Common cases based on your layout
+        cand1 = self.qpepre_src / f"{year}"
+        cand2 = self.qpepre_src / f"forai_1hrobs_{year}"
+
+        if cand1.is_dir():
+            return cand1
+        if cand2.is_dir():
+            return cand2
+        return None
 
     def process_files_from_date_list(
         self, date_strs: list[str], hr_strs: list[str]
@@ -68,7 +100,7 @@ class RWRFQPEPREProcessor:
         """
         for date_str in date_strs:
             for hr_str in hr_strs:
-                if self._check_exists(date_str, hr_str):
+                if self._check_fexists(date_str, hr_str):
                     logger.debug(
                         f"Converted file already exists for QPEPRE {date_str} {hr_str}, skipping conversion."
                     )
@@ -80,27 +112,36 @@ class RWRFQPEPREProcessor:
                 self._process(date_str, hr_str)
 
     def _get_qpepre_filename_from_date(self, date_str: str, hr_str: str) -> str:
-        """Gets QPEPRE filename based on the date and hour in QPEPRE directory.
-
-        Parameters
-        ----------
-        date_str : str
-            The date string in 'YYYY/MM/DD' format.
-        hr_str : str
-            The hour string in 'HH' format (e.g., '00', '12', '23').
-
-        Returns
-        -------
-        str
-            The path to the QPEPRE file.
+        """
+        Return the *stem* path (without '.txt') to the QPEPRE file for the given date/hour.
+        This handles different per-year folder names and falls back to a recursive search.
         """
         dt_start = datetime.strptime(f"{date_str} {hr_str}", "%Y/%m/%d %H")
         dt_end = dt_start + timedelta(hours=1)
 
         start_str = dt_start.strftime("%Y%m%d%H%M")
         end_str = dt_end.strftime("%Y%m%d%H%M")
+        filename = f"qpepre_{start_str}-{end_str}_1_h"
+        year = dt_start.year
 
-        return f"{self.qpepre_src}/qpepre_{start_str}-{end_str}_1_h"
+        # 1) Try expected subfolder(s) for the year
+        year_dir = self._resolve_qpepre_dir_for_year(year)
+        if year_dir:
+            candidate = year_dir / f"{filename}.txt"
+            if candidate.exists():
+                # Return path *without* extension, to match existing call sites
+                return str(candidate.with_suffix(""))
+
+        # 2) Fallback: recursive search under the whole root
+        matches = list(self.qpepre_src.rglob(f"{filename}.txt"))
+        if matches:
+            return str(matches[0].with_suffix(""))
+
+        # 3) Give a helpful error
+        raise FileNotFoundError(
+            f"QPEPRE file not found for {date_str} {hr_str}. "
+            f"Tried: {self.qpepre_src}/{{{year}, forai_1hrobs_{year}}}/{filename}.txt"
+        )
 
     def _get_rwrf_paths(self, date_str: str, hr_str: str) -> tuple[str, str]:
         """Gets the original RWRF file path and the path for the new processed file.
@@ -332,16 +373,19 @@ class RWRFQPEPREProcessor:
         """
         temp_nc_path = None
         try:
+            logger.info(f"converting txt to nc for {date_str} {hr_str}...")
             temp_nc_path = self._convert_txt_to_nc(date_str, hr_str)
 
             org_rwrf_path, new_rwrf_path = self._get_rwrf_paths(date_str, hr_str)
             pathlib.Path(new_rwrf_path).parent.mkdir(parents=True, exist_ok=True)
             
+            logger.info(f"combining rwrf and qpepre for {date_str} {hr_str}...")
             with Dataset(temp_nc_path) as qpepre_ds, Dataset(org_rwrf_path) as rwrf_ds:
                 self.combine_rwrf_qpepre(rwrf_ds, qpepre_ds, new_rwrf_path)
 
+            logger.info(f"cropping rwrf by qpepre for {date_str} {hr_str}...")
             cropped_path = self._crop_rwrf_by_qpepre(new_rwrf_path)
-            logger.debug(f"Successfully created: {cropped_path}")
+            logger.info(f"Successfully created: {cropped_path}")
 
         except Exception as e:
             logger.debug(f"ERROR processing QPEPRE {date_str} {hr_str}- {e}")
@@ -361,4 +405,5 @@ if __name__ == "__main__":
         rwrf_src=CONFIG.rwrf,
         output_dir=CONFIG.rwrf,
     )
-    processor.process_files_from_date_list(CONFIG.date_strs, CONFIG.hr_strs)
+    # processor.process_files_from_date_list(CONFIG.date_strs, CONFIG.hr_strs)
+    processor()
