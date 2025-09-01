@@ -170,8 +170,8 @@ class RWRFQPEPREProcessor:
         This handles different per-year folder names and falls back to a recursive search.
         """
         logger.debug(f"Getting QPEPRE filename for date: {date_str}, hour: {hr_str}")
-        dt_start = datetime.strptime(f"{date_str} {hr_str}", "%Y/%m/%d %H")
-        dt_end = dt_start + timedelta(hours=1)
+        dt_end = datetime.strptime(f"{date_str} {hr_str}", "%Y/%m/%d %H")
+        dt_start = dt_end - timedelta(hours=1)
 
         start_str = dt_start.strftime("%Y%m%d%H%M")
         end_str = dt_end.strftime("%Y%m%d%H%M")
