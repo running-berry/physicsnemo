@@ -7,6 +7,7 @@ import yaml
 
 from datasource import RWRF, RWRFQPEPREProcessor
 from utils import CONFIG
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +78,14 @@ class RWRFLite:
                     f"Queueing RWRF-QPEPRE processing for {date_str} {hr_str}..."
                 )
                 self.rwrf_qpepre_processor._process(date_str, hr_str)
+
                 logger.debug("Converting RWRF NetCDF to NPZ")
                 nc_path = self.get_rwrf_path(date_str, hr_str) # if nc file doesn't have its corresponding qpepre file will just return original nc file path (doesn't have .nc suffix)
                 self.rwrf.convert_to_npz(nc_path)
                 if nc_path.suffix == ".nc":
                     self.remove_temp_files(nc_path, remove_parent=True, force_parent=True)
+
+        self.rwrf_qpepre_processor.save_time_records("./timings.csv", fmt="csv")
             
     def get_rwrf_path(self, date_str: str, hr_str: str) -> pathlib.Path:
         """Constructs the path to the NetCDF file for a given date and hour.
