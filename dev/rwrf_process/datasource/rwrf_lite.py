@@ -53,39 +53,71 @@ class RWRFLite:
         date_strs = train_date_strs + valid_date_strs 
         self.process_files_from_date_list(date_strs, CONFIG.hr_strs) 
     
-    def process_files_from_date_list(
-        self, date_strs: list[str], hr_strs: list[str]
-    ) -> None:
-        """
-        Executes the processing workflow for a given list of dates and hours.
+    def process_one(self, date_str: str, hr_str: str):
+        """One independent unit of work for multiprocessing"""
+        if self.rwrf._check_exists(date_str, hr_str):
+            logger.debug(f"Converted npz already exists for {date_str} {hr_str}, skipping.")
+            return
 
-        Parameters
-        ----------
-        date_strs : list[str]
-            A list of date strings in 'YYYY/MM/DD' format.
-        hr_strs : list[str]
-            A list of hour strings in 'HH' format (e.g., '00', '12', '23').
-        """
-        for date_str in date_strs:
-            for hr_str in hr_strs:
-                if self.rwrf._check_exists(date_str, hr_str):
-                    logger.debug(
-                        f"Converted npz files already exists for RWRF  {date_str} {hr_str}, skipping conversion."
-                    )
-                    continue
+        logger.debug(f"Processing {date_str} {hr_str}...")
+        self.rwrf_qpepre_processor._process(date_str, hr_str)
 
-                logger.debug(
-                    f"Queueing RWRF-QPEPRE processing for {date_str} {hr_str}..."
-                )
-                self.rwrf_qpepre_processor._process(date_str, hr_str)
+        logger.debug("Converting RWRF NetCDF to NPZ")
+        nc_path = self.get_rwrf_path(date_str, hr_str)
+        self.rwrf.convert_to_npz(nc_path)
+        if nc_path.suffix == ".nc":
+            self.remove_temp_files(nc_path, remove_parent=True, force_parent=True)
 
-                logger.debug("Converting RWRF NetCDF to NPZ")
-                nc_path = self.get_rwrf_path(date_str, hr_str) # if nc file doesn't have its corresponding qpepre file will just return original nc file path (doesn't have .nc suffix)
-                self.rwrf.convert_to_npz(nc_path)
-                if nc_path.suffix == ".nc":
-                    self.remove_temp_files(nc_path, remove_parent=True, force_parent=True)
 
+    def process_files_from_date_list(self, date_strs: list[str], hr_strs: list[str], workers: int = 240) -> None:
+        tasks = [(d, h) for d in date_strs for h in hr_strs]
+
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(self.process_one, d, h): (d, h) for d, h in tasks}
+            for fut in as_completed(futures):
+                d, h = futures[fut]
+                try:
+                    fut.result()
+                    logger.info(f"Finished {d} {h}")
+                except Exception as e:
+                    logger.error(f"Failed {d} {h}: {e}")
+
+        # save timing at the end
         self.rwrf_qpepre_processor.save_time_records("./timings.csv", fmt="csv")
+
+    # def process_files_from_date_list(
+    #     self, date_strs: list[str], hr_strs: list[str]
+    # ) -> None:
+    #     """
+    #     Executes the processing workflow for a given list of dates and hours.
+
+    #     Parameters
+    #     ----------
+    #     date_strs : list[str]
+    #         A list of date strings in 'YYYY/MM/DD' format.
+    #     hr_strs : list[str]
+    #         A list of hour strings in 'HH' format (e.g., '00', '12', '23').
+    #     """
+    #     for date_str in date_strs:
+    #         for hr_str in hr_strs:
+    #             if self.rwrf._check_exists(date_str, hr_str):
+    #                 logger.debug(
+    #                     f"Converted npz files already exists for RWRF  {date_str} {hr_str}, skipping conversion."
+    #                 )
+    #                 continue
+
+    #             logger.debug(
+    #                 f"Queueing RWRF-QPEPRE processing for {date_str} {hr_str}..."
+    #             )
+    #             self.rwrf_qpepre_processor._process(date_str, hr_str)
+
+    #             logger.debug("Converting RWRF NetCDF to NPZ")
+    #             nc_path = self.get_rwrf_path(date_str, hr_str) # if nc file doesn't have its corresponding qpepre file will just return original nc file path (doesn't have .nc suffix)
+    #             self.rwrf.convert_to_npz(nc_path)
+    #             if nc_path.suffix == ".nc":
+    #                 self.remove_temp_files(nc_path, remove_parent=True, force_parent=True)
+
+    #     self.rwrf_qpepre_processor.save_time_records("./timings.csv", fmt="csv")
             
     def get_rwrf_path(self, date_str: str, hr_str: str) -> pathlib.Path:
         """Constructs the path to the NetCDF file for a given date and hour.
