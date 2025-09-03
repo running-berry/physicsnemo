@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
+import time
 
 # Setup logger
 LOGFILE = "era5_2_npz_log.txt"
@@ -297,7 +298,10 @@ def main():
     
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
+    # Start timer
+    t0 = time.perf_counter()
+
     # Parse dates
     try:
         start_date = datetime.strptime(args.start_date, "%Y/%m/%d")
@@ -312,12 +316,15 @@ def main():
     # Process data
     logger.info("Starting processing: %s from %s to %s (step: %dh)", 
                 args.variable, args.start_date, args.end_date, args.hour_step)
-    
+                
     stats = processor.process_date_range(start_date, end_date, args.variable, args.hour_step)
-    
+
+    elapsed = time.perf_counter() - t0
+    mins, secs = divmod(elapsed, 60)
     logger.info("Summary for var=%s: processed=%d skipped=%d errors=%d",
                 args.variable, stats["processed"], stats["skipped"], stats["errors"])
-    
+    logger.info("Total runtime: %.1f seconds (%.1f minutes)", elapsed, mins + secs/60)
+
     return 0 if stats["errors"] == 0 else 1
 
 
