@@ -6,16 +6,15 @@
 # configurable CLI args. Supports two splits (train/valid) with one or multiple
 # date ranges each, and uses multiprocessing to speed up per-timestamp loading.
 #
-# NEW: When a file is missing at a target timestamp, we now substitute the
-#      NEAREST-IN-TIME available file for that *same variable* (±1h, ±2h, ...).
-#      If no file exists for that variable anywhere in the split, we fall back
-#      to zeros with the correct shape (from --var-dummy template).
+# Missing files are substituted with the NEAREST-IN-TIME available *raw NPZ file*
+# (scanned once from the cache folder). If a var has no files anywhere, we fall
+# back to zeros with the correct shape (from --var-dummy template).
 #
 # Example:
 #   python build_stormcast_zarr_mp.py \
 #     --cache-highres ../data/cache/rwrf/train \
 #     --cache-lowres  ../data/cache/era5/train \
-#     --data-base ../data \
+#     --zarr-base ../data \
 #     --experiment-name stormcast_small \
 #     --train-ranges "2019/08/01:2019/08/31" \
 #     --valid-ranges "2019/09/01:2019/09/07" \
@@ -23,14 +22,10 @@
 #     --domain-size 256,256 \
 #     --split both --workers 16 --log-level INFO
 #
-# Notes:
-# - If you omit --var-lowres / --var-highres / --invariants, built-in defaults are used.
-# - Invariants are taken from the HighRes cache (first timestamp in the split where all exist).
-# - Missing NPZs are replaced by the nearest-in-time available sample for that var; only if no
-#   samples exist at all do we fall back to zeros (dummy template).
 
 import argparse
 import os
+import re
 import time
 import logging
 import multiprocessing
@@ -49,23 +44,8 @@ import util_extract as u1
 
 LOG = logging.getLogger("npz2zarr")
 
-# -------------------- Logging -------------------- #
-def setup_logging(level: str, log_file: Optional[str]) -> None:
-    handlers: List[logging.Handler] = [logging.StreamHandler()]
-    if log_file:
-        handlers.append(logging.FileHandler(log_file, mode="a", encoding="utf-8"))
-
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s:%(lineno)d: %(message)s",
-        handlers=handlers,
-    )
-    LOG.debug("Logger initialized (level=%s, file=%s)", level, log_file)
-
-setup_logging("DEBUG", "/workspace/phy")
 # -------------------- Defaults -------------------- #
 DEFAULT_LOWRES_VARS = [
-    # Provided low-res (ERA5-like) channel list
     "mslp", "sp", "t2m", "u10", "v10", "tp", "tcwv",
     "q1000", "q850", "q500", "q250",
     "t1000", "t850", "t500", "t250",
@@ -75,7 +55,6 @@ DEFAULT_LOWRES_VARS = [
 ]
 
 DEFAULT_HIGHRES_VARS = [
-    # Provided high-res (RWRF) channel list
     "u10","v10","t2m","sp","msl","tcwv",
     "u50","u100","u150","u200","u250","u300","u400","u500","u600","u700","u850","u925","u1000",
     "v50","v100","v150","v200","v250","v300","v400","v500","v600","v700","v850","v925","v1000",
@@ -127,10 +106,6 @@ def make_hourly_datetimes(start_slash: str, end_slash: str) -> np.ndarray:
     return arr
 
 def parse_ranges(ranges: str) -> List[Tuple[str, str]]:
-    """
-    ranges string like: "YYYY/MM/DD:YYYY/MM/DD,YYYY/MM/DD:YYYY/MM/DD"
-    returns list of (start, end)
-    """
     out: List[Tuple[str, str]] = []
     for chunk in ranges.split(","):
         chunk = chunk.strip()
@@ -151,10 +126,43 @@ def concat_hourly(ranges: List[Tuple[str, str]]) -> np.ndarray:
     LOG.info("Constructed datetime grid from %d range(s): total %d hours", len(ranges), len(out))
     return out
 
-# -------------------- Data helpers -------------------- #
+# -------------------- Filenames & data helpers -------------------- #
 def npz_path_for(cache_dir: str, var: str, dt: np.datetime64) -> str:
     yy, mm, dd, hh = np.datetime_as_string(dt, unit="h").replace("T", "-").split("-")
     return os.path.join(cache_dir, f"{var}_{yy}{mm}{dd}{hh}.npz")
+
+# Single regex to parse BOTH var and timestamp from filenames
+_RX_VAR_TS = re.compile(r"^(?P<var>.+)_(?P<ts>\d{10})\.npz$")  # var_YYYYMMDDHH.npz
+
+def scan_cache_index(cache_dir: str) -> Dict[str, np.ndarray]:
+    """
+    Scan the cache directory ONCE and build an index:
+        { var_name -> sorted unique numpy array of datetime64[h] where files exist }
+    Much faster than calling os.listdir() per variable.
+    """
+    index: Dict[str, List[np.datetime64]] = {}
+    try:
+        # scandir is faster than listdir + isfile
+        for entry in os.scandir(cache_dir):
+            if not entry.is_file():
+                continue
+            name = entry.name
+            m = _RX_VAR_TS.match(name)
+            if not m:
+                continue
+            var = m.group("var")
+            stamp = m.group("ts")  # YYYYMMDDHH
+            dt = np.datetime64(f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}T{stamp[8:10]}:00").astype("datetime64[h]")
+            index.setdefault(var, []).append(dt)
+    except FileNotFoundError:
+        pass
+
+    out: Dict[str, np.ndarray] = {}
+    for var, lst in index.items():
+        arr = np.sort(np.unique(np.array(lst, dtype="datetime64[h]")))
+        out[var] = arr
+    LOG.info("Cache scan complete: %d vars indexed in '%s'", len(out), cache_dir)
+    return out
 
 def try_build_dummy(
     datetime_array: np.ndarray,
@@ -163,104 +171,100 @@ def try_build_dummy(
     lon_min: float, lon_max: float,
     lat_min: float, lat_max: float,
     domain_size: Tuple[int, int],
+    cache_index: Optional[Dict[str, np.ndarray]] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Find the first timestamp where dummy_var NPZ exists and use it to infer shape.
-    Returns: (dummy_data, lon_grid, lat_grid, times)
+    Find a dummy template from the first existing file of dummy_var among the
+    requested grid or, if none, from any file present for that var in the index.
     """
-    LOG.info("Searching for dummy template var='%s' in %d timestamps under %s",
-             dummy_var, len(datetime_array), cache_dir)
+    LOG.info("Searching for dummy template var='%s' under %s", dummy_var, cache_dir)
+    # Prefer an exact grid timestamp
     for dt in list(datetime_array):
         candidate = npz_path_for(cache_dir, dummy_var, dt)
         if os.path.exists(candidate):
             LOG.info("Using %s as dummy template", candidate)
             real_arr, lon_grid, lat_grid, times = u1.extract_region(
-                candidate, dummy_var, lon_min, lon_max, lat_min, lat_max,
-                domain_size=domain_size,
+                candidate, dummy_var, lon_min, lon_max, lat_min, lat_max, domain_size=domain_size
             )
             Ny_full, Nx_full = lat_grid.shape
             Ny_tgt, Nx_tgt = domain_size
             if Ny_full < Ny_tgt or Nx_full < Nx_tgt:
-                LOG.debug("Template smaller than target; interpolating to %s", domain_size)
                 real_arr, lon_grid, lat_grid = u1.interp_to_domain(
                     lon_grid, lat_grid, real_arr, domain_size, method="linear"
                 )
-            dummy_arr = np.full_like(real_arr, fill_value=0.0)
-            LOG.debug("Dummy template shape=%s", tuple(dummy_arr.shape))
-            return dummy_arr, lon_grid, lat_grid, times
+            return np.full_like(real_arr, 0.0), lon_grid, lat_grid, times
+
+    # Else: any file for dummy_var from the prebuilt index
+    if cache_index is None:
+        cache_index = scan_cache_index(cache_dir)
+    avail_any = cache_index.get(dummy_var, np.array([], dtype="datetime64[h]"))
+    if avail_any.size:
+        dt = avail_any[0]
+        candidate = npz_path_for(cache_dir, dummy_var, dt)
+        LOG.info("Using %s as dummy template (first available in cache index)", candidate)
+        real_arr, lon_grid, lat_grid, times = u1.extract_region(
+            candidate, dummy_var, lon_min, lon_max, lat_min, lat_max, domain_size=domain_size
+        )
+        Ny_full, Nx_full = lat_grid.shape
+        Ny_tgt, Nx_tgt = domain_size
+        if Ny_full < Ny_tgt or Nx_full < Nx_tgt:
+            real_arr, lon_grid, lat_grid = u1.interp_to_domain(
+                lon_grid, lat_grid, real_arr, domain_size, method="linear"
+            )
+        return np.full_like(real_arr, 0.0), lon_grid, lat_grid, times
+
     raise FileNotFoundError(
-        "Could not build dummy: no NPZ found for --var-dummy across the provided datetimes."
+        "Could not build dummy: no NPZ found for --var-dummy in grid or cache folder."
     )
 
 # --------- Nearest-available substitution helpers ---------- #
-def build_availability_map(cache_dir: str, var_list: List[str], dts: np.ndarray) -> Dict[str, np.ndarray]:
+def nearest_dt(target_dt: np.datetime64, sorted_dts: np.ndarray) -> Optional[np.datetime64]:
     """
-    For each variable, return a sorted array of indices (into dts) where a file exists.
+    Return the datetime64[h] in sorted_dts nearest to target_dt.
+    Tie → earlier one. None if sorted_dts is empty.
     """
-    avail: Dict[str, List[int]] = {v: [] for v in var_list}
-    for i, dt in enumerate(dts):
-        for v in var_list:
-            if os.path.exists(npz_path_for(cache_dir, v, dt)):
-                avail[v].append(i)
-    return {v: np.array(ixs, dtype=int) for v, ixs in avail.items()}
-
-def nearest_index(target_idx: int, sorted_indices: np.ndarray) -> Optional[int]:
-    """
-    Given a sorted array of available indices, return the index (into that array)
-    of the nearest available element to target_idx, breaking ties by choosing the earlier one.
-    Returns None if sorted_indices is empty.
-    """
-    if sorted_indices.size == 0:
+    if sorted_dts.size == 0:
         return None
-    pos = np.searchsorted(sorted_indices, target_idx)
-    if pos == 0:
-        return sorted_indices[0]
-    if pos == sorted_indices.size:
-        return sorted_indices[-1]
-    before = sorted_indices[pos - 1]
-    after  = sorted_indices[pos]
-    # tie-break: prefer 'before' if equal distance
-    return before if (target_idx - before) <= (after - target_idx) else after
+    diffs = np.abs(sorted_dts.astype("datetime64[h]") - target_dt.astype("datetime64[h]"))
+    imin = int(np.argmin(diffs))
+    best = sorted_dts[imin]
+    ties = np.where(diffs == diffs[imin])[0]
+    if ties.size > 1:
+        best = sorted_dts[int(np.min(ties))]
+    return best
 
-def load_or_nearest(
+def load_or_nearest_by_cache(
     cache_dir: str,
     var: str,
-    dt_idx: int,
-    all_datetimes: np.ndarray,
-    avail_indices_for_var: np.ndarray,
+    target_dt: np.datetime64,
+    avail_dts_for_var: np.ndarray,
     lon_min: float, lon_max: float,
     lat_min: float, lat_max: float,
     domain_size: Tuple[int, int],
     dummy_data: np.ndarray,
-) -> Tuple[np.ndarray, bool, Optional[int]]:
+) -> Tuple[np.ndarray, bool, Optional[np.datetime64]]:
     """
-    Try to load var at dt_idx; if missing, substitute the nearest-in-time available
-    timestamp for that var. Returns (data, was_substituted, src_idx_or_None).
-    If no sample exists for this var anywhere, returns (dummy, True, None).
+    Try loading var at target_dt; if missing, substitute nearest-in-time from cache index.
+    Returns (data, was_substituted, src_dt_or_None). If no sample exists, return (dummy, True, None).
     """
-    # 1) direct hit?
-    dt = all_datetimes[dt_idx]
-    path = npz_path_for(cache_dir, var, dt)
+    path = npz_path_for(cache_dir, var, target_dt)
     if os.path.exists(path):
         data, lon_grid, lat_grid, _ = u1.extract_region(
             path, var, lon_min, lon_max, lat_min, lat_max, domain_size=domain_size
         )
         data, lon_grid, lat_grid = u1.interp_to_domain(lon_grid, lat_grid, data, domain_size, method="linear")
-        return data, False, dt_idx
+        return data, False, target_dt
 
-    # 2) nearest substitution
-    near_idx = nearest_index(dt_idx, avail_indices_for_var)
-    if near_idx is None:
-        # no sample for this var at all -> zeros fallback
+    near_dt = nearest_dt(target_dt, avail_dts_for_var)
+    if near_dt is None:
         return dummy_data.copy(), True, None
 
-    dt2 = all_datetimes[near_idx]
-    path2 = npz_path_for(cache_dir, var, dt2)
+    path2 = npz_path_for(cache_dir, var, near_dt)
     data, lon_grid, lat_grid, _ = u1.extract_region(
         path2, var, lon_min, lon_max, lat_min, lat_max, domain_size=domain_size
     )
     data, lon_grid, lat_grid = u1.interp_to_domain(lon_grid, lat_grid, data, domain_size, method="linear")
-    return data, True, near_idx
+    return data, True, near_dt
 
 # -------------------- Multiprocessing worker -------------------- #
 def _load_timestamp_block(
@@ -268,7 +272,7 @@ def _load_timestamp_block(
     all_datetimes: np.ndarray,
     cache_dir: str,
     var_list: List[str],
-    avail_map: Dict[str, np.ndarray],   # var -> sorted indices where file exists
+    avail_map: Dict[str, np.ndarray],   # var -> sorted datetimes present in cache (preindexed)
     lon_min: float, lon_max: float,
     lat_min: float, lat_max: float,
     domain_size: Tuple[int, int],
@@ -276,22 +280,24 @@ def _load_timestamp_block(
 ) -> tuple:
     """
     Worker: Load all variables for one timestamp, using nearest-in-time substitution
-    if missing. Returns (index, stacked_array, substitutions_log).
+    from *cache-scanned* availability. Returns (index, stacked_array, substitutions_log).
     """
     channel_arr = None
     subs_msgs: List[str] = []
 
+    tgt_dt = all_datetimes[idx]
     for var in var_list:
-        data, substituted, src_idx = load_or_nearest(
-            cache_dir, var, idx, all_datetimes, avail_map[var],
+        LOG.info(f"loading timestamp block for {var} at {tgt_dt}")
+        data, substituted, src_dt = load_or_nearest_by_cache(
+            cache_dir, var, tgt_dt, avail_map.get(var, np.array([], dtype="datetime64[h]")),
             lon_min, lon_max, lat_min, lat_max, domain_size, dummy_data
         )
         if substituted:
-            tgt_str = np.datetime_as_string(all_datetimes[idx], unit="h")
-            if src_idx is None:
+            tgt_str = np.datetime_as_string(tgt_dt, unit="h")
+            if src_dt is None:
                 subs_msgs.append(f"{var} {tgt_str} <- ZERO (no samples for var)")
             else:
-                src_str = np.datetime_as_string(all_datetimes[src_idx], unit="h")
+                src_str = np.datetime_as_string(src_dt, unit="h")
                 subs_msgs.append(f"{var} {tgt_str} <- nearest {src_str}")
 
         channel_arr = data.copy() if channel_arr is None else np.concatenate((channel_arr, data), axis=0)
@@ -319,22 +325,28 @@ def build_split(
 ) -> None:
     """
     Assemble HighRes/LowRes 4D arrays over a datetime grid, compute stats, and
-    write Zarr stores. Also write invariants (from the first available timestamp
-    of the split) once under zarr_base/invariants/.
+    write Zarr stores. Also write invariants once under zarr_base/invariants/.
     """
     t_split0 = time.perf_counter()
     LOG.info("[%s] Building split with %d timestamps | HR vars=%d | LR vars=%d | workers=%d",
              split_name, len(datetime_array), len(vars_highres), len(vars_lowres), workers)
 
+    # ---- Pre-scan cache once per level ----
+    LOG.info("[%s] Scanning HighRes cache index ...", split_name)
+    hr_index = scan_cache_index(cache_highres)
+    LOG.info("[%s] Scanning LowRes cache index ...", split_name)
+    lr_index = scan_cache_index(cache_lowres)
+
     # ---- Dummy template from HighRes cache ----
     dummy_data, dummy_lon_grid, dummy_lat_grid, _ = try_build_dummy(
-        datetime_array, cache_highres, dummy_var, lon_min, lon_max, lat_min, lat_max, domain_size
+        datetime_array, cache_highres, dummy_var, lon_min, lon_max, lat_min, lat_max, domain_size, cache_index=hr_index
     )
 
-    def build_level(fname: str, cache_dir: str, var_list: List[str]):
+    def build_level(fname: str, cache_dir: str, var_list: List[str], cache_index: Dict[str, np.ndarray]):
         t0 = time.perf_counter()
-        LOG.info("[%s] %s: precomputing availability map ...", split_name, fname)
-        avail_map = build_availability_map(cache_dir, var_list, datetime_array)
+        LOG.info("[%s] %s: preparing availability map from cache index ...", split_name, fname)
+        # avail_map is just a filter to the global index for vars we actually need
+        avail_map: Dict[str, np.ndarray] = {v: cache_index.get(v, np.array([], dtype="datetime64[h]")) for v in var_list}
         missing_all = sum(1 for v in var_list if avail_map[v].size == 0)
         if missing_all:
             LOG.warning("[%s] %s: %d/%d vars have NO samples; will fall back to zeros.",
@@ -380,8 +392,8 @@ def build_split(
         LOG.info("[%s] %s: computing stats ...", split_name, fname)
         means = np.nanmean(data_arr, axis=(0, 2, 3)).astype(np.float32)
         stds  = np.nanstd (data_arr, axis=(0, 2, 3)).astype(np.float32)
-        np.save(stats_dir / f"{experiment_name}_{split_name}_means.npy", means)
-        np.save(stats_dir / f"{experiment_name}_{split_name}_stds.npy",  stds)
+        np.save(stats_dir / f"means.npy", means)
+        np.save(stats_dir / f"stds.npy",  stds)
         LOG.info("[%s] %s: saved stats under %s", split_name, fname, stats_dir)
 
         # Zarr write
@@ -408,11 +420,11 @@ def build_split(
         t1 = time.perf_counter()
         LOG.info("[%s] %s: total elapsed %.1fs", split_name, fname, t1 - t0)
 
-    # Build HighRes / LowRes
-    build_level("HighRes", cache_highres, vars_highres)
-    build_level("LowRes",  cache_lowres,  vars_lowres)
+    # Build HighRes / LowRes using the prebuilt indexes
+    build_level("HighRes", cache_highres, vars_highres, hr_index)
+    build_level("LowRes",  cache_lowres,  vars_lowres,  lr_index)
 
-    # Invariants
+    # Invariants (pulled from HighRes cache)
     LOG.info("[%s] Building invariants ...", split_name)
     inv_arr = None
     dt0 = None
@@ -430,6 +442,7 @@ def build_split(
     LOG.info("[%s] Using %s for invariants extraction", split_name, np.datetime_as_string(dt0, unit="h"))
 
     for var in invariants:
+        LOG.info(f"processing invariants for {var}")
         path = npz_path_for(cache_highres, var, dt0)
         dt_data, lon_grid, lat_grid, _ = u1.extract_region(
             path, var, lon_min, lon_max, lat_min, lat_max, domain_size=domain_size
@@ -465,7 +478,7 @@ def build_split(
 # -------------------- Main -------------------- #
 def main():
     ap = argparse.ArgumentParser(
-        description="Build HighRes/LowRes Zarr datasets for train/valid splits from NPZ caches (multiprocessing, nearest-time substitution)."
+        description="Build HighRes/LowRes Zarr datasets from NPZ caches (multiprocessing, nearest raw NPZ substitution; cached directory index)."
     )
     # Variables (optional; fall back to defaults if omitted)
     ap.add_argument("--var-lowres",  default=None,
@@ -522,7 +535,6 @@ def main():
     train_dt = concat_hourly(parse_ranges(args.train_ranges))
     valid_dt = concat_hourly(parse_ranges(args.valid_ranges))
 
-    # Run selected splits
     if args.split in ("train", "both"):
         LOG.info("=== Building TRAIN split ===")
         build_split(
