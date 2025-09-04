@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 #
-# build_stormcast_zarr_mp.py
 #
 # Build HighRes/LowRes Zarr datasets (and invariants) from NPZ caches using fully
 # configurable CLI args. Supports two splits (train/valid) with one or multiple
@@ -292,6 +291,17 @@ def _load_timestamp_block(
             cache_dir, var, tgt_dt, avail_map.get(var, np.array([], dtype="datetime64[h]")),
             lon_min, lon_max, lat_min, lat_max, domain_size, dummy_data
         )
+
+        # ------------------------------
+        if data.ndim == 4 and data.shape[1] == 1:
+            # (1,1,H,W) → (1,H,W)
+            data = data[:, 0, :, :]
+        elif data.ndim == 2:
+            # (H,W) → (1,H,W)
+            data = data[None, :, :]
+        if data.ndim != 3:
+            raise ValueError(f"Unexpected shape {data.shape} for var={var} at {tgt_dt}")
+
         if substituted:
             tgt_str = np.datetime_as_string(tgt_dt, unit="h")
             if src_dt is None:
@@ -300,12 +310,37 @@ def _load_timestamp_block(
                 src_str = np.datetime_as_string(src_dt, unit="h")
                 subs_msgs.append(f"{var} {tgt_str} <- nearest {src_str}")
 
-        channel_arr = data.copy() if channel_arr is None else np.concatenate((channel_arr, data), axis=0)
+        # Concatenate (channels on axis=0). Add rich diagnostics if it fails.
+        if channel_arr is None:
+            channel_arr = data.copy()
+        else:
+            try:
+                channel_arr = np.concatenate((channel_arr, data), axis=0)
+            except ValueError as e:
+                LOG.error(
+                    "Concat failed at timestamp=%s var=%s | substituted=%s src_dt=%s\n"
+                    "  channel_arr: shape=%s ndim=%d dtype=%s\n"
+                    "  incoming   : shape=%s ndim=%d dtype=%s\n"
+                    "  Note: concatenation is along axis=0 (channel axis).",
+                    np.datetime_as_string(tgt_dt, unit="h"),
+                    var,
+                    substituted,
+                    (np.datetime_as_string(src_dt, unit='h') if src_dt is not None else "None"),
+                    getattr(channel_arr, 'shape', None),
+                    getattr(channel_arr, 'ndim', None),
+                    getattr(channel_arr, 'dtype', None),
+                    getattr(data, 'shape', None),
+                    getattr(data, 'ndim', None),
+                    getattr(data, 'dtype', None),
+                )
+                raise ValueError(
+                    f"Concatenation failed for var={var} at {np.datetime_as_string(tgt_dt, unit='h')}: "
+                    f"channel_arr shape={getattr(channel_arr, 'shape', None)} vs data shape={getattr(data, 'shape', None)}"
+                ) from e
 
     if channel_arr.ndim != 3:
         raise RuntimeError(f"Unexpected per-timestamp shape: {channel_arr.shape}")
     return idx, channel_arr, subs_msgs
-
 # -------------------- Split builder (MP) -------------------- #
 def build_split(
     split_name: str,
