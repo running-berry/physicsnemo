@@ -1,8 +1,8 @@
 #!/bin/bash
 
 python3 era5_nc_2_npz.py \
-    --input-dir path_to_era5_nc \
-    --output-dir path_to_store_era5_npz \
+    --input-dir /workspace/NCDR_StormCast/des/era5_rwrf_nc/era5 \
+    --output-dir /workspace/NCDR_StormCast/des/npz/era5 \
     --start-date 2019/08/01 \
     --end-date 2021/08/31 \
     --variable mslp sp t2m u10 v10 tp tcwv \
