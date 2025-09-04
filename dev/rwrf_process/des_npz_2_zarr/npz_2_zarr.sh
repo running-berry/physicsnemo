@@ -9,7 +9,7 @@ PYTHONPATH="$UTIL_DIR:$PYTHONPATH" python npz_2_zarr.py \
     --cache-lowres  /workspace/NCDR_StormCast/des/npz/era5 \
     --zarr-base /workspace/NCDR_StormCast/des/zarr \
     --experiment-name stormcast_test \
-    --train-ranges "2019/08/01:2019/08/30" \
+    --train-ranges "2019/08/06:2019/08/06" \
     --valid-ranges "2019/09/01:2019/09/02" \
     --split train \
     --log-level DEBUG --log-file /workspace/physicsnemo/dev/rwrf_process/des_npz_2_zarr/npz_2_zarr.log \
