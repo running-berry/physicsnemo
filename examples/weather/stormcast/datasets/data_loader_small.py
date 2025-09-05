@@ -18,6 +18,7 @@ import os
 import glob
 import torch
 import numpy as np
+
 from physicsnemo.launch.logging import PythonLogger, RankZeroLoggingWrapper
 from physicsnemo.distributed import DistributedManager
 from datetime import datetime, timedelta
@@ -29,6 +30,7 @@ from .dataset import StormCastDataset
 
 logger = PythonLogger("dataset")
 
+debug_flag = False
 
 class Dataset(StormCastDataset):
     """
@@ -40,6 +42,10 @@ class Dataset(StormCastDataset):
 
         dist = DistributedManager()
         self.logger0 = RankZeroLoggingWrapper(logger, dist)
+        # Some backends expose only info/warning/error; provide a debug alias
+        if not hasattr(self.logger0, "debug"):
+            # fall back to info so debug logs don't crash workers
+            self.logger0.debug = self.logger0.info  # type: ignore[attr-defined]
 
         dask.config.set(
             scheduler="synchronous"
@@ -244,8 +250,12 @@ class Dataset(StormCastDataset):
         """
         Loop through all years and count the total number of samples
         """
-        test_datetime_start = self.params.train_dates[0]
-        test_datetime_last = self.params.train_dates[1]
+        if self.train:
+            test_datetime_start = self.params.train_dates[0]
+            test_datetime_last = self.params.train_dates[1]
+        else:
+            test_datetime_start = self.params.valid_dates[0]
+            test_datetime_last = self.params.valid_dates[1]
 
         first_sample = datetime.strptime(
             test_datetime_start, "%Y/%m/%d") \
@@ -285,7 +295,7 @@ class Dataset(StormCastDataset):
     def normalize_background(self, x: np.ndarray) -> np.ndarray:
         """Convert background from physical units to normalized data."""
         if self.normalize:
-            self.logger0.info(f"lowres- x: {x}, mean:{self.means_LowRes}, std:{self.stds_LowRes}")
+            # self.logger0.info(f"lowres- x: {x}, mean:{self.means_LowRes}, std:{self.stds_LowRes}")
             x -= self.means_LowRes
             x /= self.stds_LowRes
         return x
@@ -315,13 +325,21 @@ class Dataset(StormCastDataset):
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
             self.ds_LowRes, self.LowRes_paths, ts_inp, ts_tar
         )
-        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels).LowRes.values
+        try:
+            inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels).LowRes.values
+        except KeyError:
+            self.logger0.error(
+                f"[LowRes] Timestamp {ts_inp} not found in dataset index. "
+                f"Available times range: {ds_inp.time.values[0]} → {ds_inp.time.values[-1]} "
+                f"(len={len(ds_inp.time.values)})"
+            )
+            raise
 
-        self.logger0.info(
-            f"_get_LowRes ts_inp={ts_inp}, shape={inp_field.shape}, "
-            f"channels={self.kept_LowRes_channels}"
-        )
-
+        if debug_flag:
+            self.logger0.debug(
+                f"_get_LowRes ts_inp={ts_inp}, shape={inp_field.shape}, "
+                f"channels={self.kept_LowRes_channels}"
+            )
         inp = self.normalize_background(inp_field)
 
         nan_channels = [
@@ -341,10 +359,36 @@ class Dataset(StormCastDataset):
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
             self.ds_HighRes, self.HighRes_paths, ts_inp, ts_tar
         )
-        inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_HighRes_channels).HighRes.values
-        tar_field = ds_tar.sel(time=ts_tar, channel=self.kept_HighRes_channels).HighRes.values
+        try:
+            inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_HighRes_channels).HighRes.values
+        except KeyError:
+            self.logger0.error(
+                f"[HighRes] Input timestamp {ts_inp} not found. "
+                f"Range: {ds_inp.time.values[0]} → {ds_inp.time.values[-1]} "
+                f"(len={len(ds_inp.time.values)})"
+            )
+            raise
 
-        inp, tar = self.normalize_state(inp_field), self.normalize_state(tar_field)
+        try:
+            tar_field = ds_tar.sel(time=ts_tar, channel=self.kept_HighRes_channels).HighRes.values
+        except KeyError:
+            self.logger0.error(
+                f"[HighRes] Target timestamp {ts_tar} not found. "
+                f"Range: {ds_tar.time.values[0]} → {ds_tar.time.values[-1]} "
+                f"(len={len(ds_tar.time.values)})"
+            )
+            raise
+
+        # Normalize to produce tensors used below
+        inp = self.normalize_state(inp_field)
+        tar = self.normalize_state(tar_field)
+
+        if debug_flag:
+            self.logger0.debug(
+                f"_get_HighRes ts_inp={ts_inp}, ts_tar={ts_tar}, "
+                f"in_shape={inp_field.shape}, tar_shape={tar_field.shape}, "
+                f"channels={self.kept_HighRes_channels}"
+            )
 
         # Log NaNs
         for arr, tag in [(inp, "inp"), (tar, "tar")]:
@@ -367,27 +411,30 @@ class Dataset(StormCastDataset):
         """
         time_pair = self._global_idx_to_datetime(global_idx)
         ts_inp, ts_tar = time_pair
-        self.logger0.info(
-            f"Fetching sample idx={global_idx}, inp={ts_inp}, tar={ts_tar}"
-        )
+
+        if debug_flag:
+            self.logger0.info(
+                f"Fetching sample idx={global_idx}, inp={ts_inp}, tar={ts_tar}"
+            )
 
         HighRes_pair = self._get_HighRes(*time_pair)
         LowRes_pair = self._get_LowRes(*time_pair)
 
-        # Log shapes and a quick summary
-        if isinstance(LowRes_pair, torch.Tensor):
-            self.logger0.info(
-                f"LowRes shape: {tuple(LowRes_pair.shape)} "
-                f"(min={LowRes_pair.min().item():.4f}, max={LowRes_pair.max().item():.4f})"
-            )
-        if isinstance(HighRes_pair, tuple):
-            inp, tar = HighRes_pair
-            self.logger0.info(
-                f"HighRes inp shape: {tuple(inp.shape)}, "
-                f"tar shape: {tuple(tar.shape)} "
-                f"(inp[min={inp.min().item():.4f}, max={inp.max().item():.4f}], "
-                f"tar[min={tar.min().item():.4f}, max={tar.max().item():.4f}])"
-            )
+        if debug_flag:
+            # Log shapes and a quick summary
+            if isinstance(LowRes_pair, torch.Tensor):
+                self.logger0.info(
+                    f"LowRes shape: {tuple(LowRes_pair.shape)} "
+                    f"(min={LowRes_pair.min().item():.4f}, max={LowRes_pair.max().item():.4f})"
+                )
+            if isinstance(HighRes_pair, tuple):
+                inp, tar = HighRes_pair
+                self.logger0.info(
+                    f"HighRes inp shape: {tuple(inp.shape)}, "
+                    f"tar shape: {tuple(tar.shape)} "
+                    f"(inp[min={inp.min().item():.4f}, max={inp.max().item():.4f}], "
+                    f"tar[min={tar.min().item():.4f}, max={tar.max().item():.4f}])"
+                )
 
         return {
             "background": LowRes_pair,
