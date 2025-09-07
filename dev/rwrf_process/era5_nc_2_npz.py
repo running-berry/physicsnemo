@@ -134,7 +134,7 @@ class ERA5Processor:
     def process_single_time(self, date: datetime, hour: int, variable: str) -> bool:
         """Process a single time step and save as numpy array"""
 
-        filename = f"{variable}_{date.strftime('%Y%m%d')}_{hour:02d}.npz"
+        filename = f"{variable}_{date.strftime('%Y%m%d')}{hour:02d}.npz"
         output_path = self.output_base_path / filename
 
         logger.info("START: var=%s date=%s hour=%02d", variable, date.strftime("%Y-%m-%d"), hour)
