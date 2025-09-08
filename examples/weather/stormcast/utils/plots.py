@@ -1,32 +1,42 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023 - 2024 NVIDIA CORPORATION & AFFILIATES.
-# SPDX-FileCopyrightText: All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from matplotlib import pyplot as plt
 import numpy as np
 
 
-def validation_plot(generated, truth, variable):
-    """Produce validation plot created during training."""
-    fig, (a, b) = plt.subplots(1, 2)
-    im = a.imshow(generated)
-    a.set_title("generated, {}.png".format(variable))
-    plt.colorbar(im, fraction=0.046, pad=0.04)
-    im = b.imshow(truth)
-    b.set_title("truth")
-    plt.colorbar(im, fraction=0.046, pad=0.04)
+def validation_plot(generated, truth, variable, experiment_name=None, step=None):
+    """Produce validation plot with shared color scale for generated vs truth,
+    annotated with experiment name and step.
+    """
+    fig, (a, b) = plt.subplots(1, 2, figsize=(12, 6))
+    plt.subplots_adjust(wspace=0.4)  # extra spacing between panels
+
+    # Find global min/max across both fields
+    vmin = min(np.min(generated), np.min(truth))
+    vmax = max(np.max(generated), np.max(truth))
+
+    # Titles
+    title_generated = f"generated, {variable}.png"
+    title_truth = "truth"
+
+    if experiment_name is not None or step is not None:
+        exp_info = []
+        if experiment_name is not None:
+            exp_info.append(f"Exp: {experiment_name}")
+        if step is not None:
+            exp_info.append(f"Step: {step}")
+        exp_info_str = " | ".join(exp_info)
+
+        # Add info to both titles
+        title_generated += f"\n{exp_info_str}"
+        title_truth += f"\n{exp_info_str}"
+
+    im = a.imshow(generated, vmin=vmin, vmax=vmax, origin="lower")
+    a.set_title(title_generated)
+    plt.colorbar(im, ax=a, fraction=0.046, pad=0.04)
+
+    im = b.imshow(truth, vmin=vmin, vmax=vmax, origin="lower")
+    b.set_title(title_truth)
+    plt.colorbar(im, ax=b, fraction=0.046, pad=0.04)
+
     return fig
 
 
@@ -56,7 +66,7 @@ def inference_plot(
     if plot_var_state in color_limits:
         im = ax[0].imshow(
             state_pred,
-            origin="lower",
+            origin="lower",  # fix orientation
             cmap="magma",
             clim=color_limits[plot_var_state],
         )
@@ -72,7 +82,7 @@ def inference_plot(
     if plot_var_state in color_limits:
         im = ax[1].imshow(
             state_true,
-            origin="lower",
+            origin="lower",  # fix orientation
             cmap="magma",
             clim=color_limits[plot_var_state],
         )
@@ -80,25 +90,23 @@ def inference_plot(
         im = ax[1].imshow(state_true, origin="lower", cmap="magma")
     fig.colorbar(im, ax=ax[1], fraction=0.046, pad=0.04)
     ax[1].set_title("Actual, {}".format(plot_var_state))
+
     if plot_var_background in color_limits:
         im = ax[2].imshow(
             background,
-            origin="lower",
+            origin="lower",  # fix orientation
             cmap="magma",
             clim=color_limits[plot_var_background],
         )
     else:
-        im = ax[2].imshow(
-            background,
-            origin="lower",
-            cmap="magma",
-        )
+        im = ax[2].imshow(background, origin="lower", cmap="magma")
     fig.colorbar(im, ax=ax[2], fraction=0.046, pad=0.04)
     ax[2].set_title("Background, {}".format(plot_var_background))
+
     maxerror = np.max(np.abs(state_error))
     im = ax[3].imshow(
         state_error,
-        origin="lower",
+        origin="lower",  # fix orientation
         cmap="RdBu_r",
         vmax=maxerror,
         vmin=-maxerror,

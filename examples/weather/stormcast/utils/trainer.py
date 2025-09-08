@@ -388,7 +388,13 @@ def training_loop(cfg):
                         generated = image[f_index]
                         truth = state[1][i, f_index].cpu().numpy()
 
-                        fig = validation_plot(generated, truth, f_)
+                        fig = validation_plot(
+                            generated,
+                            truth,
+                            f_,
+                            experiment_name=cfg.training.experiment_name,
+                            step=total_steps,
+                        )
                         fig.savefig(
                             os.path.join(image_dir, f"{total_steps}_{i}_{f_}.png")
                         )
