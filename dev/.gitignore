@@ -3,4 +3,5 @@ data/*
 
 output/*
 logs/*
+e2s_package/*
 rwrf-process/cache/*

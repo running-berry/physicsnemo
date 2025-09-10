@@ -25,7 +25,6 @@ log_dir:
 
 train:
 	cd $(stormcast_dir) && \
-	#timestamp=$$(date +%Y%m%d_%H%M); \
 	PYTHONPATH=/workspace torchrun --standalone --nnodes=1 --nproc_per_node=1 train.py --config-name regression\
 	  2>&1 | tee $(log_dir)/train_$${timestamp}.log
 	
@@ -68,14 +67,19 @@ output:
     mv $(data_dir)/LowRes $(output_dir)/$(timestamp)/ || true && \
 	cp $(rwrf_dir)/config.yaml $(output_dir)/$(timestamp)/ || true 
 
+make_e2s_package:
+	cd $(rwrf_dir) && \
+	python e2s_package.py
+
 run:
-	$(MAKE) pull
+	#$(MAKE) pull
 	$(MAKE) log_dir
 	$(MAKE) make_cache
 	$(MAKE) clear_data	
 	$(MAKE) clear_rundir	
 	#$(MAKE) make_data
 	#$(MAKE) train
-  #$(MAKE) train_diffusion
+	#$(MAKE) train_diffusion
 	$(MAKE) config_train
+	$(MAKE) make_e2s_package
 	$(MAKE) output

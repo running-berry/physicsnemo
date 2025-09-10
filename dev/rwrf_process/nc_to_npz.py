@@ -1,7 +1,7 @@
 import logging
 import shutil
 
-from datasource import ERA5, RWRF, RWRFQPEPREProcessor, RWRFLite
+from datasource import ERA5, RWRF, RWRFLite, RWRFQPEPREProcessor
 from utils import CONFIG
 
 logging.basicConfig(
@@ -29,6 +29,6 @@ rwrf_lite = RWRFLite(
     verbose=True,
 )
 
-rwrf_lite() #this will process rwrf nc files, convert them to npz format and delete the tmp files one hour at a time
+rwrf_lite()  # this will process rwrf nc files, convert them to npz format and delete the tmp files one hour at a time
 
 shutil.rmtree(tmp_folder)  # for temporary files
