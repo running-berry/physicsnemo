@@ -45,6 +45,22 @@ from torch.nn.utils import clip_grad_norm_
 
 logger = PythonLogger("train")
 
+def print_dataset_info(dataset, name="dataset"):
+    logger0 = dataset.logger0 if hasattr(dataset, "logger0") else print
+    logger0.info(f"--- {name} info ---")
+    logger0.info(f"date_ranges: {dataset.date_ranges}")
+    logger0.info(f"LowRes_zarrs: {getattr(dataset, 'LowRes_zarrs', None)}")
+    logger0.info(f"HighRes_zarrs: {getattr(dataset, 'HighRes_zarrs', None)}")
+    logger0.info(f"LowRes_channels: {getattr(dataset, 'LowRes_channels', None)}")
+    logger0.info(f"HighRes_channels: {getattr(dataset, 'HighRes_channels', None)}")
+    logger0.info(f"n_samples_total: {getattr(dataset, 'n_samples_total', None)}")
+    logger0.info(f"valid_samples (first 5): {getattr(dataset, 'valid_samples', None)[:5]}")
+    logger0.info(f"image_shape: {dataset.image_shape()}")
+    logger0.info(f"background_channels: {dataset.background_channels()}")
+    logger0.info(f"state_channels: {dataset.state_channels()}")
+    logger0.info(f"invariants: {dataset.get_invariants()}")
+    logger0.info(f"-------------------")
+
 
 def training_loop(cfg):
 
@@ -95,10 +111,16 @@ def training_loop(cfg):
     logger0.info("Loading dataset...")
 
     dataset_cls = dataset_classes[cfg.dataset.name]
+    
+
+    logger0.info(f"Dataset class: {dataset_cls.__name__}")
+    # log dataset type
+    logger0.info(f"Dataset type: {cfg.dataset.name}")
     del cfg.dataset.name
 
     dataset_train = dataset_cls(cfg.dataset, train=True)
     dataset_valid = dataset_cls(cfg.dataset, train=False)
+    print_dataset_info(dataset_train, "Train")
 
     background_channels = dataset_train.background_channels()
     state_channels = dataset_train.state_channels()
@@ -388,7 +410,13 @@ def training_loop(cfg):
                         generated = image[f_index]
                         truth = state[1][i, f_index].cpu().numpy()
 
-                        fig = validation_plot(generated, truth, f_)
+                        fig = validation_plot(
+                            generated,
+                            truth,
+                            f_,
+                            experiment_name=cfg.training.experiment_name,
+                            step=total_steps,
+                        )
                         fig.savefig(
                             os.path.join(image_dir, f"{total_steps}_{i}_{f_}.png")
                         )
