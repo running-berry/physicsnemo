@@ -295,7 +295,7 @@ class Dataset(StormCastDataset):
     def normalize_background(self, x: np.ndarray) -> np.ndarray:
         """Convert background from physical units to normalized data."""
         if self.normalize:
-            # self.logger0.info(f"lowres- x: {x}, mean:{self.means_LowRes}, std:{self.stds_LowRes}")
+            self.logger0.info(f"lowres- x: {x}, mean:{self.means_LowRes}, std:{self.stds_LowRes}")
             x -= self.means_LowRes
             x /= self.stds_LowRes
         return x
@@ -389,6 +389,19 @@ class Dataset(StormCastDataset):
                 f"in_shape={inp_field.shape}, tar_shape={tar_field.shape}, "
                 f"channels={self.kept_HighRes_channels}"
             )
+
+        # Log NaNs
+        for arr, tag in [(inp, "inp"), (tar, "tar")]:
+            nan_channels = [
+                ch for i, ch in enumerate(self.kept_HighRes_channels)
+                if np.isnan(arr[i]).any()
+            ]
+            if nan_channels:
+                self.logger0.warning(
+                    f"[HighRes-{tag}] NaNs detected at ts={ts_inp}->{ts_tar} in channels: {nan_channels}"
+                )
+                with open(self.nan_log_file, "a") as f:
+                    f.write(f"{ts_inp}->{ts_tar},{'|'.join(nan_channels)}\n")
 
         # Log NaNs
         for arr, tag in [(inp, "inp"), (tar, "tar")]:
