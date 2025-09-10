@@ -84,6 +84,13 @@ class Dataset(StormCastDataset):
         )[kept_LowRes_idx, None, None]
         self.invariants = params.invariants
 
+        # debug nan lowres
+        # File to save NaN channel logs
+        os.makedirs("logs", exist_ok=True)
+        self.nan_log_file = os.path.join("logs", f"nan_channels_{'train' if train else 'valid'}.txt")
+        with open(self.nan_log_file, "w") as f:
+            f.write("timestamp,channels\n")  # CSV-style header
+
     def background_channels(self):
         """Metadata for the background channels. A list of channel names, one for each channel"""
         return self.kept_LowRes_channels
@@ -278,6 +285,7 @@ class Dataset(StormCastDataset):
     def normalize_background(self, x: np.ndarray) -> np.ndarray:
         """Convert background from physical units to normalized data."""
         if self.normalize:
+            self.logger0.info(f"lowres- x: {x}, mean:{self.means_LowRes}, std:{self.stds_LowRes}")
             x -= self.means_LowRes
             x /= self.stds_LowRes
         return x
@@ -304,31 +312,52 @@ class Dataset(StormCastDataset):
         return x
 
     def _get_LowRes(self, ts_inp, ts_tar):
-        """
-        Retrieve LowRes samples from zarr files
-        """
-
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
             self.ds_LowRes, self.LowRes_paths, ts_inp, ts_tar
         )
-
         inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_LowRes_channels).LowRes.values
 
+        self.logger0.info(
+            f"_get_LowRes ts_inp={ts_inp}, shape={inp_field.shape}, "
+            f"channels={self.kept_LowRes_channels}"
+        )
+
         inp = self.normalize_background(inp_field)
+
+        nan_channels = [
+            ch for i, ch in enumerate(self.kept_LowRes_channels)
+            if np.isnan(inp[i]).any()
+        ]
+        if nan_channels:
+            self.logger0.warning(
+                f"[LowRes] NaNs detected after normalization at ts={ts_inp} in channels: {nan_channels}"
+            )
+            with open(self.nan_log_file, "a") as f:
+                f.write(f"{ts_inp},{'|'.join(nan_channels)}\n")
+
         return torch.as_tensor(inp)
 
     def _get_HighRes(self, ts_inp, ts_tar):
-        """
-        Retrieve HighRes samples from zarr files
-        """
         ds_inp, ds_tar, adjacent = self._get_ds_handles(
             self.ds_HighRes, self.HighRes_paths, ts_inp, ts_tar
         )
-
         inp_field = ds_inp.sel(time=ts_inp, channel=self.kept_HighRes_channels).HighRes.values
         tar_field = ds_tar.sel(time=ts_tar, channel=self.kept_HighRes_channels).HighRes.values
 
         inp, tar = self.normalize_state(inp_field), self.normalize_state(tar_field)
+
+        # Log NaNs
+        for arr, tag in [(inp, "inp"), (tar, "tar")]:
+            nan_channels = [
+                ch for i, ch in enumerate(self.kept_HighRes_channels)
+                if np.isnan(arr[i]).any()
+            ]
+            if nan_channels:
+                self.logger0.warning(
+                    f"[HighRes-{tag}] NaNs detected at ts={ts_inp}->{ts_tar} in channels: {nan_channels}"
+                )
+                with open(self.nan_log_file, "a") as f:
+                    f.write(f"{ts_inp}->{ts_tar},{'|'.join(nan_channels)}\n")
 
         return torch.as_tensor(inp), torch.as_tensor(tar)
 
@@ -337,8 +366,29 @@ class Dataset(StormCastDataset):
         Return data as a dict
         """
         time_pair = self._global_idx_to_datetime(global_idx)
+        ts_inp, ts_tar = time_pair
+        self.logger0.info(
+            f"Fetching sample idx={global_idx}, inp={ts_inp}, tar={ts_tar}"
+        )
+
         HighRes_pair = self._get_HighRes(*time_pair)
         LowRes_pair = self._get_LowRes(*time_pair)
+
+        # Log shapes and a quick summary
+        if isinstance(LowRes_pair, torch.Tensor):
+            self.logger0.info(
+                f"LowRes shape: {tuple(LowRes_pair.shape)} "
+                f"(min={LowRes_pair.min().item():.4f}, max={LowRes_pair.max().item():.4f})"
+            )
+        if isinstance(HighRes_pair, tuple):
+            inp, tar = HighRes_pair
+            self.logger0.info(
+                f"HighRes inp shape: {tuple(inp.shape)}, "
+                f"tar shape: {tuple(tar.shape)} "
+                f"(inp[min={inp.min().item():.4f}, max={inp.max().item():.4f}], "
+                f"tar[min={tar.min().item():.4f}, max={tar.max().item():.4f}])"
+            )
+
         return {
             "background": LowRes_pair,
             "state": HighRes_pair,

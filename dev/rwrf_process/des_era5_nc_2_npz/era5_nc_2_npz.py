@@ -1,4 +1,3 @@
-from utils.config import CONFIG
 from netCDF4 import Dataset
 from datetime import datetime, timedelta
 import os
@@ -276,8 +275,7 @@ def main():
     )
     parser.add_argument(
         "--input-dir",
-        default=str(CONFIG.era5),
-        help="Input ERA5 base directory (default: CONFIG.era5)"
+        help="Input ERA5 base directory "
     )
     parser.add_argument(
         "--output-dir", 
