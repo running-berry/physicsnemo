@@ -47,7 +47,6 @@ make_cache:
 	cd $(rwrf_dir) && \
 	python nc_to_npz.py
 
-<<<<<<< HEAD
 reset:
 	cd $(rwrf_dir) && \
 	python run_reset.py \
