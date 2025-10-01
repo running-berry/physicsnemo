@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2024 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: data_loader_rwrf_qpe_era5.Dataset # Dataset class module and name, in any module in `datasets` folder
+
+# Main dataset
+# change the path to your local data
+location: '/workspace/data/StormCast_data/exp_3_train_2_5_yrs_val_1yr/zarr_exp3_L_24_H_24_train_2_5_years_full_6hrs' # Path to the dataset
+
+# Domain
+HighRes_img_size: [224, 128] 
+
+# Temporal selection
+dt: 1 # Timestep between samples (in multiples of the base HRRR 1hr timestep)
+exp_train_zarrs: ["stormcast_test_train"] # Zarr files to use for training, change for your needs
+train_dates: ['2019/08/01', '2021/12/31']
+exp_valid_zarrs: ["stormcast_test_valid"] # Zarr files to use for validation, change for your needs
+valid_dates: ['2022/01/01', '2022/12/31']
+
+# Variable selection
+invariants: ["lsm", "orog"] # Invariant quantitites to include
+input_channels: 'all' #'all' or list of channels to condition on
+diffusion_channels: "all" #'all' or list of channels to condition on
+kept_LowRes_channels: "all"
+kept_HighRes_channels: "all"
